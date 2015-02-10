@@ -50,43 +50,20 @@ func parseConfigStr(configStr string) (config *Config) {
 	config.Init()
 
 	lines := strings.Split(configStr, "\n")
-	tmpLine := ""
-	flag := true
 	var e *Entity
 
 	for _, line := range lines {
 		if len(line) > 0 {
-			switch {
-				case line[0] == '[' && line[len(line)-1] == ']':
-					tmpLine = line
-				case line[len(line)-1] == '[':
-					tmpLine = line
-					flag = false
-				case line[len(line)-1] == ']':
-					tmpLine += line
-					flag = true
-				default:
-					if !flag {
-						tmpLine += line
-					} else {
-						tmpLine = line
-					}
-			}
-
-			if flag {
-				if tmpLine[0] == '[' && tmpLine[len(line)-1] == ']' {
-					name := parseConfigEName(tmpLine)
-					e = &Entity{name, make(map[string][]string)}
-					config.AddEntity(e)
-				} else {
-					key,value := parseConfigLine(tmpLine)
-					if e == nil {
-						e = config.GetGloablEntity()	
-					}
-					e.AddAttr(key, value)
-					
+			if line[0] == '[' && line[len(line)-1] == ']' {
+				name := parseConfigEName(line)
+				e = &Entity{name, make(map[string]string)}
+				config.AddEntity(e)
+			} else {
+				key,value := parseConfigLine(line)
+				if e == nil {
+					e = config.GetGloablEntity()	
 				}
-				
+				e.AddAttr(key, value)
 			}
 		}
 		
@@ -99,19 +76,13 @@ func parseConfigEName(line string) (name string) {
 	return
 }
 
-func parseConfigLine(line string) (key string, value []string) {
-	line = strings.Replace(line, " ", "", -1)
+func parseConfigLine(line string) (key string, value string) {
 	kv := strings.Split(line, "=")
 	if len(kv) != 2 {
 		log.Fatal("配置文件格式错误")
 	}
 
-	key = kv[0]
-	v := kv[1]
-	if v[0] == '[' && v[len(v)-1] == ']' {
-		value = strings.Split(v[1:len(v)-1], ",")
-	} else {
-		value = []string{v}
-	}
+	key = strings.TrimSpace(kv[0])
+	value = strings.TrimSpace(kv[1])
 	return
 }

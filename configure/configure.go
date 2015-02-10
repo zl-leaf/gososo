@@ -10,12 +10,12 @@ type Config struct {
 
 type Entity struct {
 	name string
-	attributes map[string][]string
+	attributes map[string]string
 }
 
 func (config *Config)Init() {
 	config.entities = make([]*Entity, 0)
-	e := &Entity{GLOBAL_ENTITY, make(map[string][]string)}
+	e := &Entity{GLOBAL_ENTITY, make(map[string]string)}
 	config.AddEntity(e)
 }
 
@@ -53,23 +53,14 @@ func (e *Entity)Name() string {
 	return e.name
 }
 
-func (e *Entity)AddAttr(key string, value []string) {
+func (e *Entity)AddAttr(key string, value string) {
 	e.attributes[key] = value
 }
 
-func (e *Entity)GetAttrs(key string) (value []string) {
+func (e *Entity)GetAttr(key string) (value string) {
 	return e.attributes[key]
 }
 
-func (e *Entity)GetAttr(key string) (value string) {
-	if attrs,exist := e.attributes[key];exist {
-		if len(attrs) >0 {
-			value = attrs[0]
-		}
-	}
-	return
-}
-
-func (e *Entity)AllAttrs() map[string][]string{
+func (e *Entity)AllAttrs() map[string]string{
 	return e.attributes
 }
