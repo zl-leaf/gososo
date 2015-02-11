@@ -2,6 +2,7 @@ package sosoinit
 
 import(
 	"log"
+	"os"
 	"../configure"
 	"../scheduler"
 	"../downloader"
@@ -53,9 +54,23 @@ func checkSchedulerConfig(es []*configure.Entity) {
  * 检查下载器的配置是否正确
  */
 func checkDownloaderConfig(es []*configure.Entity) {
-	for _,e := range es {
+	for i,e := range es {
 		if e.GetAttr(MASTER) == "" {
 			log.Fatal("存在下载器没有对应master")
+		}
+
+		if e.GetAttr(DOWNLOAD_PATH) != "" {
+			dir := e.GetAttr(DOWNLOAD_PATH)
+
+			fi, err := os.Stat(dir)
+			if err != nil && !os.IsExist(err) || !fi.IsDir() {
+				err := os.MkdirAll(dir,0777)
+				if err != nil {
+					log.Fatalf("第%d个下载器的下载路径无法生成\n", i)
+				}
+			}
+		} else {
+			log.Fatalf("第%d个下载器没有配置下载路径\n", i)
 		}
 	}
 }
@@ -99,7 +114,7 @@ func initScheduler(es []*configure.Entity) *scheduler.Scheduler{
 func initDownloaders(es []*configure.Entity) []*downloader.Downloader {
 	downloaders := make([]*downloader.Downloader, 0)
 	for _,e := range es {
-		d := downloader.New(e.GetAttr(PORT), e.GetAttr(MASTER), e.GetAttr(DOWNLOAD_PATH))
+		d := downloader.New(e.GetAttr(MASTER), e.GetAttr(DOWNLOAD_PATH))
 		downloaders = append(downloaders, d)
 	}
 	return downloaders
