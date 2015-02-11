@@ -2,6 +2,7 @@ package scheduler
 import(
 	"net"
 	"log"
+	"strings"
 	"./pool"
 	"../utils/socket"
 )
@@ -35,7 +36,6 @@ func (scheduler *Scheduler)Stop() {
  * 接收下载器和分析器的信息
  */
 func (scheduler *Scheduler)listen() {
-	log.Println("调度器开始监听")
 	tcpAddr, err := net.ResolveTCPAddr("tcp4", "localhost:"+scheduler.port)
 	if err != nil {
 		return
@@ -65,8 +65,13 @@ func (scheduler *Scheduler)handle(conn net.Conn) {
 	if err != nil {
         return
     }
-    if string(data) == "downloader_ready" {
-    	log.Println("一个下载器准备就绪")
+
+    msg := string(data)
+    if msg == "downloader_ready" {
+    	log.Printf("%s下载器准备就绪\n", conn.RemoteAddr())
     	scheduler.downloaderPool.Add(conn)
+    } else {
+    	redirects := strings.Split(msg, "\n")
+    	addRedirectURLs(redirects)
     }
 }
