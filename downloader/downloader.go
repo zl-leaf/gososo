@@ -2,20 +2,18 @@ package downloader
 import(
 	"net"
 	"log"
-	"fmt"
 	"time"
 	"../utils/socket"
 )
 
 type Downloader struct {
-	port string
 	master string
 	downloadPath string
 	stop bool
 }
 
-func New(port, master, downloadPath string) (downloader *Downloader){
-	downloader = &Downloader{port:port, master:master, downloadPath:downloadPath}
+func New(master, downloadPath string) (downloader *Downloader){
+	downloader = &Downloader{master:master, downloadPath:downloadPath}
 	return
 }
 
@@ -50,7 +48,6 @@ func connect(ip string) (*net.TCPConn, error) {
  * 发送准备就绪信息到调度器
  */
 func (downloader *Downloader)ready() {
-	log.Println("下载器开始链接调度器")
 	for {
 		if downloader.stop == true {
 			break
@@ -71,6 +68,32 @@ func (downloader *Downloader)ready() {
 			log.Println("下载器读取信息失败")
 			log.Println(err)
 		}
-		fmt.Println("下载器接收到调度器的信息："+string(result))
+
+		url := string(result)
+		redirects,err := downloadHTML(url, downloader.downloadPath)
+		if err != nil {
+			log.Println(url + "下载失败")
+		}
+		if redirects != nil && len(redirects) > 0 {
+			sendRedirectsToScheduler(downloader.master, redirects)
+		}
+		
+	}
+}
+
+func sendRedirectsToScheduler(master string, redirects []string) {
+	conn,err := connect(master)
+	if err != nil {
+		log.Println("发送redirect，下载器来链接调度器失败")
+		log.Println(err)
+	}
+
+	msg := ""
+	for _,r := range redirects {
+		msg += r + "\n"
+	}
+	_,err = socket.Write(conn, []byte(msg))
+	if err != nil {
+		log.Println("发送redirect失败")
 	}
 }
