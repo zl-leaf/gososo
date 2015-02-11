@@ -43,7 +43,6 @@ func (config *Config)GetEntity(name string) (entities []*Entity, exist bool){
 		if e.Name() == name {
 			entities = append(entities, e)
 			exist = true
-			break 
 		}
 	}
 	return
