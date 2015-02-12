@@ -18,17 +18,13 @@ func (pool *Pool)Add(e interface{}) {
 	pool.elements.Add(e)
 }
 
-func (pool *Pool)Get() (e interface{}) {
-	result := make(chan interface{})
-	go func() {
-		for {
-			if !pool.elements.Empty() {
-				e,_ := pool.elements.Head()
-				result <- e.Value
-				break
-			}
-			time.Sleep(1 * time.Second)
+func (pool *Pool)Get() (value interface{}) {
+	for {
+		if !pool.elements.Empty() {
+			e,_ := pool.elements.Head()
+			value =  e.Value
+			return
 		}
-	}()
-	return <- result
+		time.Sleep(1 * time.Second)
+	}
 }
