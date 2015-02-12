@@ -2,26 +2,35 @@ package scheduler
 import(
 	"net"
 	"log"
+	"time"
+	"encoding/json"
+	"../msg"
 	"github.com/willf/bloom"
 	"../utils/socket"
 	"../utils/queue"
 )
 
-var urlQueue *queue.Queue = queue.New()
+var downloadQueue *queue.Queue = queue.New()
+var analyseQueue *queue.Queue = queue.New()
 var filter *bloom.BloomFilter = bloom.New(2700000, 5)
 
 func init() {
-	urlQueue.Add("http://localhost/info/b.html")
-	urlQueue.Add("http://localhost/info/a.html")
+	downloadQueue.Add("http://localhost/info/b.html")
+	downloadQueue.Add("http://localhost/info/a.html")
 }
 
-func (scheduler *Scheduler)dispatch() {
-	for !urlQueue.Empty() {
+func (scheduler *Scheduler)dispatchDownload() {
+	for {
 		if scheduler.stop {
 			break
 		}
+		time.Sleep(1 * time.Second)
 
-		e, err := urlQueue.Head()
+		if downloadQueue.Empty() {
+			continue
+		}
+
+		e, err := downloadQueue.Head()
 		if err != nil {
 			continue
 		}
@@ -43,11 +52,56 @@ func (scheduler *Scheduler)dispatch() {
 	}
 }
 
+func (scheduler *Scheduler)dispatchAnalyse() {
+	for {
+		if scheduler.stop {
+			break
+		}
+
+		time.Sleep(1 * time.Second)
+
+		if analyseQueue.Empty() {
+			continue
+		}
+
+		e, err := analyseQueue.Head()
+		if err != nil {
+			continue
+		}
+		orderMsg := e.Value.(msg.AnalyseOrderMsg)
+
+		conn := scheduler.analyzerPool.Get().(net.Conn)
+		log.Println("向分析器发送url："+orderMsg.URL)
+		result,err := json.Marshal(orderMsg)
+		if err != nil {
+			log.Println("analyse命令信息json化出错")
+			continue
+		}
+
+		_,err = socket.Write(conn, result)
+		if err != nil {
+			log.Println("发送url失败")
+			log.Println(err)
+		}
+		conn.Close()
+	}
+}
+
+/**
+ * 添加新url到待下载的url的队列
+ */
 func addRedirectURLs(redirects []string) {
 	for _,redirect := range redirects {
 		if redirect == "" {
 			continue
 		}
-		urlQueue.Add(redirect)
+		log.Println("添加"+redirect+"到下载队列")
+		downloadQueue.Add(redirect)
 	}
+}
+
+func addAnalyseURL(url,htmlPath string) {
+	m := msg.AnalyseOrderMsg{URL:url, Path:htmlPath}
+	log.Println("添加"+url+"到分析队列")
+	analyseQueue.Add(m)
 }

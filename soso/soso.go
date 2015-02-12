@@ -7,7 +7,7 @@ import(
 )
 
 func main() {
-	scheduler,downloaders := sosoinit.Sosoinit()
+	scheduler,downloaders,analyzers := sosoinit.Sosoinit()
 
 	reader := bufio.NewReader(os.Stdin)
 	for {
@@ -27,6 +27,15 @@ func main() {
 						err := d.Start()
 						if err != nil {
 							log.Println("下载器启动失败，错误如下")
+							log.Println(err)
+						}
+					}
+				}
+				if analyzers != nil {
+					for _, a := range analyzers {
+						err := a.Start()
+						if err != nil {
+							log.Println("分析器启动失败，错误如下")
 							log.Println(err)
 						}
 					}

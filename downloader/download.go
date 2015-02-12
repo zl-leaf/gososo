@@ -8,7 +8,7 @@ import(
 	"regexp"
 )
 
-func downloadHTML(u, downloadPath string) (urls []string, err error) {
+func downloadHTML(u, downloadPath string) (htmlPath string, urls []string, err error) {
 	resp, err := http.Get(u)
 	if err != nil {
 		return
@@ -21,17 +21,17 @@ func downloadHTML(u, downloadPath string) (urls []string, err error) {
 	}
 	html := string(b)
 
-	tempPath := downloadPath + resp.Request.URL.Host + resp.Request.URL.Path
-	if tempPath[len(tempPath)-1:] == "/" {
-		tempPath = tempPath + "index.html"
+	htmlPath = downloadPath + resp.Request.URL.Host + resp.Request.URL.Path
+	if htmlPath[len(htmlPath)-1:] == "/" {
+		htmlPath = htmlPath + "index.html"
 	}
 
-	dir := filepath.Dir(tempPath)
+	dir := filepath.Dir(htmlPath)
 	err = os.MkdirAll(dir,0777)
 	if err != nil {
 		return
 	}
-	f,err := os.Create(tempPath)
+	f,err := os.Create(htmlPath)
 	if err != nil {
 		return
 	}

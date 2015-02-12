@@ -3,7 +3,9 @@ import(
 	"net"
 	"log"
 	"strings"
+	"encoding/json"
 	"./pool"
+	"../msg"
 	"../utils/socket"
 )
 
@@ -12,17 +14,20 @@ type Scheduler struct {
 	listener *net.TCPListener
 	stop bool
 	downloaderPool *pool.Pool
+	analyzerPool *pool.Pool
 }
 
 func New(port string) (scheduler *Scheduler){
 	scheduler = &Scheduler{port:port}
 	scheduler.downloaderPool = pool.NewDownloaderPool()
+	scheduler.analyzerPool = pool.NewDownloaderPool()
 	return
 }
 
 func (scheduler *Scheduler)Start() (err error){
 	go scheduler.listen()
-	go scheduler.dispatch()
+	go scheduler.dispatchDownload()
+	go scheduler.dispatchAnalyse()
 	return
 }
 
@@ -66,26 +71,37 @@ func (scheduler *Scheduler)handle(conn net.Conn) {
         return
     }
 
-    msg := strings.ToLower(string(data))
+    message := strings.ToLower(string(data))
     switch {
-    	case msg=="downloader_ready":
+    	case message==msg.DOWNLOAD_READY:
     		log.Printf("%s下载器准备就绪\n", conn.RemoteAddr())
     		scheduler.downloaderPool.Add(conn)
-    	case msg=="download_ok":
-    		_,err = socket.Write(conn, []byte("ok"))
+
+    	case message==msg.ANALYZER_READY:
+    		log.Printf("%s分析器准备就绪\n", conn.RemoteAddr())
+    		scheduler.analyzerPool.Add(conn)
+
+    	case message==msg.DOWNLOAD_OK:
+    		_,err = socket.Write(conn, []byte(msg.OK))
     		if err != nil {
     			log.Println("发送接收新url信息时候出错")
     			break
     		}
     		data,err := socket.Read(conn)
     		if err != nil {
-    			log.Println("接受redirect时候出错")
+    			log.Println("接收redirect时候出错")
     			break
     		}
-    		redirects := strings.Split(string(data), "\n")
-    		u := redirects[0]
-    		log.Println(u + "下载完成")
-    		redirects = redirects[1:]
-    		addRedirectURLs(redirects)
+
+    		var downloadResultMsg msg.DownloadResultMsg
+    		err = json.Unmarshal(data, &downloadResultMsg)
+    		if err != nil {
+    			log.Println("解析download result时候出错")
+    			break
+    		}
+    		
+    		log.Println(downloadResultMsg.URL + "下载完成")
+    		addAnalyseURL(downloadResultMsg.URL, downloadResultMsg.Path)
+    		addRedirectURLs(downloadResultMsg.Redirects)
     }
 }

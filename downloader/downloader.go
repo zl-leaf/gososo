@@ -3,6 +3,8 @@ import(
 	"net"
 	"log"
 	"time"
+	"encoding/json"
+	"../msg"
 	"../utils/socket"
 )
 
@@ -55,31 +57,35 @@ func (downloader *Downloader)ready() {
 		time.Sleep(5 * time.Second)
 		conn,err := connect(downloader.master)
 		if err != nil {
-			log.Println("下载器来链接调度器失败")
+			log.Println("下载器链接调度器失败")
 			log.Println(err)
+			continue
 		}
-		_,err = socket.Write(conn, []byte("downloader_ready"))
+		_,err = socket.Write(conn, []byte(msg.DOWNLOAD_READY))
 		if err != nil {
 			log.Println("发送准备信息失败")
 			log.Println(err)
+			continue
 		}
 		result, err := socket.Read(conn)
 		if err != nil {
 			log.Println("下载器读取信息失败")
 			log.Println(err)
+			continue
 		}
 
 		url := string(result)
-		redirects,err := downloadHTML(url, downloader.downloadPath)
+		htmlPath,redirects,err := downloadHTML(url, downloader.downloadPath)
 		if err != nil {
 			log.Println(url + "下载失败")
+		} else {
+			downloadResultMsg := msg.DownloadResultMsg{URL:url, Path:htmlPath, Redirects:redirects}
+			sendRedirectsToScheduler(downloader.master, downloadResultMsg)
 		}
-		sendRedirectsToScheduler(downloader.master, url, redirects)
-		
 	}
 }
 
-func sendRedirectsToScheduler(master string, url string, redirects []string) {
+func sendRedirectsToScheduler(master string, downloadResultMsg msg.DownloadResultMsg) {
 	conn,err := connect(master)
 	if err != nil {
 		log.Println("发送redirect，下载器来链接调度器失败")
@@ -87,22 +93,23 @@ func sendRedirectsToScheduler(master string, url string, redirects []string) {
 		return
 	}
 
-	_,err = socket.Write(conn, []byte("download_ok"))
+	_,err = socket.Write(conn, []byte(msg.DOWNLOAD_OK))
 	if err != nil {
 		log.Println("发送下载完成信息时候出错")
 		return
 	}
 	data,err := socket.Read(conn)
-	if err != nil || string(data) != "ok" {
+	if err != nil || string(data) != msg.OK {
 		log.Println("接收master确认信息出错")
 		return
 	}
 
-	msg := url + "\n"
-	for _,r := range redirects {
-		msg += r + "\n"
+	result,err := json.Marshal(downloadResultMsg)
+	if err != nil {
+		log.Println("download返回信息json化出错")
+		return
 	}
-	_,err = socket.Write(conn, []byte(msg))
+	_,err = socket.Write(conn, result)
 	if err != nil {
 		log.Println("发送redirect失败")
 	}
