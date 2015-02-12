@@ -22,6 +22,14 @@ func Test_Sosoinit(t *testing.T) {
 		}
 	}
 
+	if analyzerConfig,exist := config.GetEntity(ANALYZER);exist {
+		checkAnalyzerConfig(analyzerConfig)
+		analyzers := initAnalyzers(analyzerConfig)
+		for _,analyzer := range analyzers {
+			log.Println(analyzer)
+		}
+	}
+
 	if dbConfig,exist := config.GetEntity(DATABASE);exist {
 		checkDatabaseConfig(dbConfig)
 	} else {

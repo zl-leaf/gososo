@@ -6,20 +6,24 @@ import(
 	"../configure"
 	"../scheduler"
 	"../downloader"
+	"../analyzer"
 	"../utils/db"
 )
 
 const(
 	SCHEDULER = "scheduler"
 	DOWNLOADER = "downloader"
+	ANALYZER = "analyzer"
 	DATABASE = "database"
 
 	MASTER = "master"
 	PORT = "port"
 	DOWNLOAD_PATH = "download_path"
+	DICTIONARY_PATH = "dictionary_path"
+	STOPWORDS_PATH = "stopwords_path"
 )
 
-func Sosoinit() (scheduler *scheduler.Scheduler, downloaders []*downloader.Downloader){
+func Sosoinit() (scheduler *scheduler.Scheduler, downloaders []*downloader.Downloader, analyzers []*analyzer.Analyzer){
 	config := configure.InitConfig("./config.ini")
 
 	if schedulerConfig,exist := config.GetEntity(SCHEDULER);exist {
@@ -30,6 +34,11 @@ func Sosoinit() (scheduler *scheduler.Scheduler, downloaders []*downloader.Downl
 	if downloaderConfig,exist := config.GetEntity(DOWNLOADER);exist {
 		checkDownloaderConfig(downloaderConfig)
 		downloaders = initDownloaders(downloaderConfig)
+	}
+
+	if analyzerConfig,exist := config.GetEntity(ANALYZER);exist {
+		checkAnalyzerConfig(analyzerConfig)
+		analyzers = initAnalyzers(analyzerConfig)
 	}
 
 	if dbConfig,exist := config.GetEntity(DATABASE);exist {
@@ -71,6 +80,36 @@ func checkDownloaderConfig(es []*configure.Entity) {
 			}
 		} else {
 			log.Fatalf("第%d个下载器没有配置下载路径\n", i)
+		}
+	}
+}
+
+/**
+ * 检查分析器的配置是否正确
+ */
+func checkAnalyzerConfig(es []*configure.Entity) {
+	for i,e := range es {
+		if e.GetAttr(MASTER) == "" {
+			log.Fatal("存在分析器没有对应master")
+		}
+		if e.GetAttr(DICTIONARY_PATH) != "" {
+			dictionary := e.GetAttr(DICTIONARY_PATH)
+			fi, err := os.Stat(dictionary)
+			if err != nil && !os.IsExist(err) || fi.IsDir() {
+				log.Fatalf("第%d个分析器的词典路径错误\n", i)
+			}
+		} else {
+			log.Fatalf("第%d个分析器没有配置词典路径\n", i)
+		}
+
+		if e.GetAttr(STOPWORDS_PATH) != "" {
+			stopwords := e.GetAttr(STOPWORDS_PATH)
+			fi, err := os.Stat(stopwords)
+			if err != nil && !os.IsExist(err) || fi.IsDir() {
+				log.Fatalf("第%d个分析器的停用词典路径错误\n", i)
+			}
+		} else {
+			log.Fatalf("第%d个分析器没有配置停用词典路径\n", i)
 		}
 	}
 }
@@ -118,4 +157,13 @@ func initDownloaders(es []*configure.Entity) []*downloader.Downloader {
 		downloaders = append(downloaders, d)
 	}
 	return downloaders
+}
+
+func initAnalyzers(es []*configure.Entity) []*analyzer.Analyzer {
+	analyzers := make([]*analyzer.Analyzer, 0)
+	for _,e := range es {
+		a := analyzer.New(e.GetAttr(MASTER), e.GetAttr(DICTIONARY_PATH), e.GetAttr(STOPWORDS_PATH))
+		analyzers = append(analyzers, a)
+	}
+	return analyzers
 }
