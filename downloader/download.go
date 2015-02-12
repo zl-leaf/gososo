@@ -50,6 +50,7 @@ func downloadHTML(u, downloadPath string) (urls []string, err error) {
 }
 
 func getRedirectURL(html string) (redirects []string) {
+	redirects = make([]string, 0)
 	var hrefRegexp = regexp.MustCompile(`<a.*?href=\"(.*?[^\"])\".*?>.*?</a>`)
 	match := hrefRegexp.FindAllStringSubmatch(html, -1)
 	if match != nil {

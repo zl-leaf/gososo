@@ -11,7 +11,7 @@ type Scheduler struct {
 	port string
 	listener *net.TCPListener
 	stop bool
-	downloaderPool *pool.DownloaderPool
+	downloaderPool *pool.Pool
 }
 
 func New(port string) (scheduler *Scheduler){
@@ -66,12 +66,26 @@ func (scheduler *Scheduler)handle(conn net.Conn) {
         return
     }
 
-    msg := string(data)
-    if msg == "downloader_ready" {
-    	log.Printf("%s下载器准备就绪\n", conn.RemoteAddr())
-    	scheduler.downloaderPool.Add(conn)
-    } else {
-    	redirects := strings.Split(msg, "\n")
-    	addRedirectURLs(redirects)
+    msg := strings.ToLower(string(data))
+    switch {
+    	case msg=="downloader_ready":
+    		log.Printf("%s下载器准备就绪\n", conn.RemoteAddr())
+    		scheduler.downloaderPool.Add(conn)
+    	case msg=="download_ok":
+    		_,err = socket.Write(conn, []byte("ok"))
+    		if err != nil {
+    			log.Println("发送接收新url信息时候出错")
+    			break
+    		}
+    		data,err := socket.Read(conn)
+    		if err != nil {
+    			log.Println("接受redirect时候出错")
+    			break
+    		}
+    		redirects := strings.Split(string(data), "\n")
+    		u := redirects[0]
+    		log.Println(u + "下载完成")
+    		redirects = redirects[1:]
+    		addRedirectURLs(redirects)
     }
 }

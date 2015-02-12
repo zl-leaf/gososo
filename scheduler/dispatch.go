@@ -1,5 +1,6 @@
 package scheduler
 import(
+	"net"
 	"log"
 	"github.com/willf/bloom"
 	"../utils/socket"
@@ -30,7 +31,7 @@ func (scheduler *Scheduler)dispatch() {
 			continue
 		}
 
-		conn := scheduler.downloaderPool.Get()
+		conn := scheduler.downloaderPool.Get().(net.Conn)
 		log.Println("向下载器发送url："+url)
 		_,err = socket.Write(conn, []byte(url))
 		if err != nil {

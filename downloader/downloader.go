@@ -74,21 +74,31 @@ func (downloader *Downloader)ready() {
 		if err != nil {
 			log.Println(url + "下载失败")
 		}
-		if redirects != nil && len(redirects) > 0 {
-			sendRedirectsToScheduler(downloader.master, redirects)
-		}
+		sendRedirectsToScheduler(downloader.master, url, redirects)
 		
 	}
 }
 
-func sendRedirectsToScheduler(master string, redirects []string) {
+func sendRedirectsToScheduler(master string, url string, redirects []string) {
 	conn,err := connect(master)
 	if err != nil {
 		log.Println("发送redirect，下载器来链接调度器失败")
 		log.Println(err)
+		return
 	}
 
-	msg := ""
+	_,err = socket.Write(conn, []byte("download_ok"))
+	if err != nil {
+		log.Println("发送下载完成信息时候出错")
+		return
+	}
+	data,err := socket.Read(conn)
+	if err != nil || string(data) != "ok" {
+		log.Println("接收master确认信息出错")
+		return
+	}
+
+	msg := url + "\n"
 	for _,r := range redirects {
 		msg += r + "\n"
 	}
