@@ -3,24 +3,58 @@ import(
 	"net"
 	"log"
 	"time"
+	"io"
+	"os"
+	"bufio"
+	"strings"
 	"encoding/json"
+	"github.com/huichen/sego"
 	"../msg"
 	"../utils/socket"
 )
 
 type Analyzer struct {
 	master string
-	dictionaryPath string
-	stopwordsPath string
+	segmenter sego.Segmenter
+	stopwords map[string]int
 	stop bool
 }
 
 func New(master, dictionaryPath, stopwordsPath string) (analyzer *Analyzer) {
-	analyzer = &Analyzer{master:master, dictionaryPath:dictionaryPath, stopwordsPath:stopwordsPath}
+	analyzer = &Analyzer{master:master}
+	analyzer.segmenter.LoadDictionary(dictionaryPath)
+	stopwords,err := getStopwrods(stopwordsPath)
+	if err == nil {
+		analyzer.stopwords = stopwords
+	} else {
+		analyzer.stopwords = make(map[string]int)
+	}
 	return
 }
 
-func (analyzer *Analyzer)Start() (err error) {
+func getStopwrods(f string) (map[string]int,error){
+	stopwords := make(map[string]int)
+	file, err := os.Open(f)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	rd := bufio.NewReader(file)
+	for {
+		word, err := rd.ReadString('\n')
+		word = strings.TrimSpace(word)
+        if io.EOF == err {
+            break
+        }
+		if err != nil {
+            return nil, err
+        }
+        stopwords[word] = 0
+	}
+	return stopwords, nil
+}
+
+func (analyzer *Analyzer) Start() (err error) {
 	go analyzer.ready()
 	return
 }
@@ -49,7 +83,7 @@ func connect(ip string) (*net.TCPConn, error) {
 /**
  * 发送准备就绪信息到调度器
  */
-func (analyzer *Analyzer)ready() {
+func (analyzer *Analyzer) ready() {
 	for {
 		if analyzer.stop == true {
 			break

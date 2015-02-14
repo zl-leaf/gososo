@@ -4,9 +4,6 @@ import(
 	"regexp"
 	"strings"
 	"github.com/huichen/sego"
-	"io"
-	"os"
-	"bufio"
 	"sort"
 )
 
@@ -15,26 +12,23 @@ type Document struct {
 	WordCount int
 	Keywords Keywords
 	Segmenter sego.Segmenter
-	dict string
-	stopwords string
+	Stopwords map[string]int
 }
 
-func (doc *Document)Init(dict, stopwords string) {
-	doc.dict = dict
-	doc.stopwords = stopwords
+func (doc *Document) Init(segmenter sego.Segmenter, stopwords map[string]int) {
+	doc.Segmenter = segmenter
+	doc.Stopwords = stopwords
 }
 
 func (doc *Document)LoadHTML(html string) {
 	doc.MainContent = getMainContent(html)
-	segmenter,words := doc.Words()
-	doc.Segmenter = segmenter
+	words := doc.Words()
 	doc.WordCount = len(words)
 	doc.Keywords = getKeywords(doc, words)
 }
 
-func (doc *Document)Words() (sego.Segmenter, []*sego.Token){
-	var segmenter sego.Segmenter
-	segmenter.LoadDictionary(doc.dict)
+func (doc *Document) Words() ([]*sego.Token){
+	segmenter := doc.Segmenter
 
     // 分词
     text := []byte(doc.MainContent)
@@ -44,17 +38,17 @@ func (doc *Document)Words() (sego.Segmenter, []*sego.Token){
     for _, segment := range segments {
     	words = append(words, segment.Token())
     }
-    return segmenter,words
+    return words
 }
 
-func (doc *Document)TotalFrequency() int64 {
+func (doc *Document) TotalFrequency() int64 {
 	return doc.Segmenter.Dictionary().TotalFrequency()
 }
 
 func getMainContent(html string) string{
 	title := getHTMLTitle(html)
 
-	var hrefRegexp = regexp.MustCompile(`(<(head|script|style|noscript).*?>[\s\S]*?<\/(head|script|style|noscript)>|<[^>]+>|&nbsp)`)
+	hrefRegexp := regexp.MustCompile(`(<(head|script|style|noscript).*?>[\s\S]*?<\/(head|script|style|noscript)>|<[^>]+>|&nbsp)`)
 	html = hrefRegexp.ReplaceAllString(html, "")
 	lines := strings.Split(html, "\n")
 	charCount := len(html)
@@ -165,10 +159,7 @@ func getHTMLTitle(html string) string{
 func getKeywords(doc *Document, tokens []*sego.Token) Keywords{
 	keyWords := Keywords{}
 
-	stopwords,err := getStopwrods(doc.stopwords)
-	if err != nil {
-		stopwords = make(map[string]int)
-	}
+	stopwords := doc.Stopwords
 	wordMap := make(map[string]*Keyword)
 
 	row := 1
@@ -202,26 +193,4 @@ func getKeywords(doc *Document, tokens []*sego.Token) Keywords{
 
 	sort.Sort(keyWords)
 	return keyWords
-}
-
-func getStopwrods(f string) (map[string]int,error){
-	stopwords := make(map[string]int)
-	file, err := os.Open(f)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	rd := bufio.NewReader(file)
-	for {
-		word, err := rd.ReadString('\n')
-		word = strings.TrimSpace(word)
-        if io.EOF == err {
-            break
-        }
-		if err != nil {
-            return nil, err
-        }
-        stopwords[word] = 0
-	}
-	return stopwords, nil
 }

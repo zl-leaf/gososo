@@ -7,7 +7,7 @@ import(
 	"log"
 )
 
-func (analyzer *Analyzer)analyse(f string) {
+func (analyzer *Analyzer) analyse(f string) {
 	file, err := os.Open(f)
 	defer file.Close()
 	if err != nil {
@@ -29,7 +29,7 @@ func (analyzer *Analyzer)analyse(f string) {
 	}
 
 	document := &Document{}
-	document.Init(analyzer.dictionaryPath, analyzer.stopwordsPath)
+	document.Init(analyzer.segmenter, analyzer.stopwords)
 	document.LoadHTML(html)
 
 
