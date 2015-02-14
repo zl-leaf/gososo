@@ -4,18 +4,20 @@ import(
 	"log"
 	"time"
 	"encoding/json"
+	"../context"
 	"../msg"
 	"../utils/socket"
 )
 
 type Downloader struct {
+	context *context.Context
 	master string
 	downloadPath string
 	stop bool
 }
 
-func New(master, downloadPath string) (downloader *Downloader){
-	downloader = &Downloader{master:master, downloadPath:downloadPath}
+func New(context *context.Context, master, downloadPath string) (downloader *Downloader){
+	downloader = &Downloader{context:context, master:master, downloadPath:downloadPath}
 	return
 }
 

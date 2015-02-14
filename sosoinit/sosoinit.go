@@ -24,7 +24,7 @@ const(
 	STOPWORDS_PATH = "stopwords_path"
 )
 
-func Sosoinit() (cont *context.Context) {
+func Sosoinit(context *context.Context) {
 	var scheduler *scheduler.Scheduler
 	var downloaders []*downloader.Downloader
 	var analyzers []*analyzer.Analyzer
@@ -32,17 +32,17 @@ func Sosoinit() (cont *context.Context) {
 
 	if schedulerConfig,exist := config.GetEntity(SCHEDULER);exist {
 		checkSchedulerConfig(schedulerConfig)
-		scheduler = initScheduler(schedulerConfig)
+		scheduler = initScheduler(context, schedulerConfig)
 	}
 
 	if downloaderConfig,exist := config.GetEntity(DOWNLOADER);exist {
 		checkDownloaderConfig(downloaderConfig)
-		downloaders = initDownloaders(downloaderConfig)
+		downloaders = initDownloaders(context, downloaderConfig)
 	}
 
 	if analyzerConfig,exist := config.GetEntity(ANALYZER);exist {
 		checkAnalyzerConfig(analyzerConfig)
-		analyzers = initAnalyzers(analyzerConfig)
+		analyzers = initAnalyzers(context, analyzerConfig)
 	}
 
 	if dbConfig,exist := config.GetEntity(DATABASE);exist {
@@ -51,8 +51,9 @@ func Sosoinit() (cont *context.Context) {
 		log.Fatal("缺少数据库配置")
 	}
 
-	cont = context.New(scheduler, downloaders, analyzers)
-	return
+	context.AddComponent("scheduler", scheduler)
+	context.AddComponent("downloaders", downloaders)
+	context.AddComponent("analyzers", analyzers)
 }
 
 /**
@@ -150,25 +151,25 @@ func checkDatabaseConfig(es []*configure.Entity) {
 /**
  * 初始化调度器
  */
-func initScheduler(es []*configure.Entity) *scheduler.Scheduler{
+func initScheduler(context *context.Context, es []*configure.Entity) *scheduler.Scheduler{
 	e := es[0]
-	scheduler := scheduler.New(e.GetAttr(PORT))
+	scheduler := scheduler.New(context, e.GetAttr(PORT))
 	return scheduler
 }
 
-func initDownloaders(es []*configure.Entity) []*downloader.Downloader {
+func initDownloaders(context *context.Context, es []*configure.Entity) []*downloader.Downloader {
 	downloaders := make([]*downloader.Downloader, 0)
 	for _,e := range es {
-		d := downloader.New(e.GetAttr(MASTER), e.GetAttr(DOWNLOAD_PATH))
+		d := downloader.New(context, e.GetAttr(MASTER), e.GetAttr(DOWNLOAD_PATH))
 		downloaders = append(downloaders, d)
 	}
 	return downloaders
 }
 
-func initAnalyzers(es []*configure.Entity) []*analyzer.Analyzer {
+func initAnalyzers(context *context.Context, es []*configure.Entity) []*analyzer.Analyzer {
 	analyzers := make([]*analyzer.Analyzer, 0)
 	for _,e := range es {
-		a := analyzer.New(e.GetAttr(MASTER), e.GetAttr(DICTIONARY_PATH), e.GetAttr(STOPWORDS_PATH))
+		a := analyzer.New(context, e.GetAttr(MASTER), e.GetAttr(DICTIONARY_PATH), e.GetAttr(STOPWORDS_PATH))
 		analyzers = append(analyzers, a)
 	}
 	return analyzers

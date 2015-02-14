@@ -5,11 +5,13 @@ import(
 	"strings"
 	"encoding/json"
 	"./pool"
+	"../context"
 	"../msg"
 	"../utils/socket"
 )
 
 type Scheduler struct {
+	context *context.Context
 	port string
 	listener *net.TCPListener
 	stop bool
@@ -17,8 +19,8 @@ type Scheduler struct {
 	analyzerPool *pool.Pool
 }
 
-func New(port string) (scheduler *Scheduler){
-	scheduler = &Scheduler{port:port}
+func New(context *context.Context, port string) (scheduler *Scheduler){
+	scheduler = &Scheduler{context:context, port:port}
 	scheduler.downloaderPool = pool.NewDownloaderPool()
 	scheduler.analyzerPool = pool.NewDownloaderPool()
 	return

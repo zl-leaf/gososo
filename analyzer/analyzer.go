@@ -9,19 +9,21 @@ import(
 	"strings"
 	"encoding/json"
 	"github.com/huichen/sego"
+	"../context"
 	"../msg"
 	"../utils/socket"
 )
 
 type Analyzer struct {
+	context *context.Context
 	master string
 	segmenter sego.Segmenter
 	stopwords map[string]int
 	stop bool
 }
 
-func New(master, dictionaryPath, stopwordsPath string) (analyzer *Analyzer) {
-	analyzer = &Analyzer{master:master}
+func New(context *context.Context, master, dictionaryPath, stopwordsPath string) (analyzer *Analyzer) {
+	analyzer = &Analyzer{context:context, master:master}
 	analyzer.segmenter.LoadDictionary(dictionaryPath)
 	stopwords,err := getStopwrods(stopwordsPath)
 	if err == nil {
