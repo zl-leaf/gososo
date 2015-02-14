@@ -42,16 +42,16 @@ func New(config map[string]string) (dc *DatabaseConfig){
 	return
 }
 
-func (dc *DatabaseConfig)DSN() string{
+func (dc *DatabaseConfig) DSN() string{
 	return dc.username+":"+dc.password+"@("+dc.host+":"+dc.port+")/"+dc.dbname+"?charset="+dc.charset
 }
 
-func (dc *DatabaseConfig)Open() (*sql.DB, error){
+func (dc *DatabaseConfig) Open() (*sql.DB, error){
 	db, err := sql.Open("mysql", dc.DSN())
 	return db, err
 }
 
-func (dc *DatabaseConfig)CheckDBExist() (bool, error) {
+func (dc *DatabaseConfig) CheckDBExist() (bool, error) {
 	db,err := sql.Open("mysql", dc.DSN())
 	if err != nil {
 		return false,err

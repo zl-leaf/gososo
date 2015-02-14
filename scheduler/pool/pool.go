@@ -14,11 +14,11 @@ func NewDownloaderPool() (pool *Pool){
 	return
 }
 
-func (pool *Pool)Add(e interface{}) {
+func (pool *Pool) Add(e interface{}) {
 	pool.elements.Add(e)
 }
 
-func (pool *Pool)Get() (value interface{}) {
+func (pool *Pool) Get() (value interface{}) {
 	for {
 		if !pool.elements.Empty() {
 			e,_ := pool.elements.Head()

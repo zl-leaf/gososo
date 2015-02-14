@@ -7,7 +7,11 @@ import(
 )
 
 func main() {
-	scheduler,downloaders,analyzers := sosoinit.Sosoinit()
+	context := sosoinit.Sosoinit()
+	scheduler := context.Scheduler()
+	downloaders := context.Downloaders()
+	analyzers := context.Analyzers()
+	log.Println("初始化完成")
 
 	reader := bufio.NewReader(os.Stdin)
 	for {

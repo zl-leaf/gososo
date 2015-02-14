@@ -3,6 +3,7 @@ package sosoinit
 import(
 	"log"
 	"os"
+	"../context"
 	"../configure"
 	"../scheduler"
 	"../downloader"
@@ -23,7 +24,10 @@ const(
 	STOPWORDS_PATH = "stopwords_path"
 )
 
-func Sosoinit() (scheduler *scheduler.Scheduler, downloaders []*downloader.Downloader, analyzers []*analyzer.Analyzer){
+func Sosoinit() (cont *context.Context) {
+	var scheduler *scheduler.Scheduler
+	var downloaders []*downloader.Downloader
+	var analyzers []*analyzer.Analyzer
 	config := configure.InitConfig("./config.ini")
 
 	if schedulerConfig,exist := config.GetEntity(SCHEDULER);exist {
@@ -46,6 +50,8 @@ func Sosoinit() (scheduler *scheduler.Scheduler, downloaders []*downloader.Downl
 	} else {
 		log.Fatal("缺少数据库配置")
 	}
+
+	cont = context.New(scheduler, downloaders, analyzers)
 	return
 }
 

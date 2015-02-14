@@ -24,14 +24,14 @@ func New(port string) (scheduler *Scheduler){
 	return
 }
 
-func (scheduler *Scheduler)Start() (err error){
+func (scheduler *Scheduler) Start() (err error){
 	go scheduler.listen()
 	go scheduler.dispatchDownload()
 	go scheduler.dispatchAnalyse()
 	return
 }
 
-func (scheduler *Scheduler)Stop() {
+func (scheduler *Scheduler) Stop() {
 	scheduler.listener.Close()
 	scheduler.stop = true
 	return
@@ -40,7 +40,7 @@ func (scheduler *Scheduler)Stop() {
 /**
  * 接收下载器和分析器的信息
  */
-func (scheduler *Scheduler)listen() {
+func (scheduler *Scheduler) listen() {
 	tcpAddr, err := net.ResolveTCPAddr("tcp4", "localhost:"+scheduler.port)
 	if err != nil {
 		return
@@ -65,7 +65,7 @@ func (scheduler *Scheduler)listen() {
 	return
 }
 
-func (scheduler *Scheduler)handle(conn net.Conn) {
+func (scheduler *Scheduler) handle(conn net.Conn) {
 	data,err := socket.Read(conn)
 	if err != nil {
         return

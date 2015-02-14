@@ -17,9 +17,10 @@ var filter *bloom.BloomFilter = bloom.New(2700000, 5)
 func init() {
 	downloadQueue.Add("http://localhost/info/b.html")
 	downloadQueue.Add("http://localhost/info/a.html")
+	// downloadQueue.Add("http://localhost/info/c.html")
 }
 
-func (scheduler *Scheduler)dispatchDownload() {
+func (scheduler *Scheduler) dispatchDownload() {
 	for {
 		if scheduler.stop {
 			break
@@ -52,7 +53,7 @@ func (scheduler *Scheduler)dispatchDownload() {
 	}
 }
 
-func (scheduler *Scheduler)dispatchAnalyse() {
+func (scheduler *Scheduler) dispatchAnalyse() {
 	for {
 		if scheduler.stop {
 			break

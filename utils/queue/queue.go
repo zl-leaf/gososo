@@ -17,15 +17,15 @@ func (q *Queue)Len() int{
 	return q.l.Len()
 }
 
-func (q *Queue)Add(v interface{}) *list.Element{
+func (q *Queue) Add(v interface{}) *list.Element{
 	return q.l.PushBack(v)
 }
 
-func (q *Queue)Empty() bool{
+func (q *Queue) Empty() bool{
 	return q.l.Len() == 0
 }
 
-func (q *Queue)Head() (*list.Element, error){
+func (q *Queue) Head() (*list.Element, error){
 	if q.Len() == 0 {
 		err := errors.New("the queue is empty")
 		return nil, err
