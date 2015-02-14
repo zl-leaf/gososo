@@ -19,12 +19,12 @@ func New(master, downloadPath string) (downloader *Downloader){
 	return
 }
 
-func (downloader *Downloader)Start() (err error) {
+func (downloader *Downloader) Start() (err error) {
 	go downloader.ready()
 	return
 }
 
-func (downloader *Downloader)Stop() {
+func (downloader *Downloader) Stop() {
 	downloader.stop = true
 }
 
@@ -49,7 +49,7 @@ func connect(ip string) (*net.TCPConn, error) {
 /**
  * 发送准备就绪信息到调度器
  */
-func (downloader *Downloader)ready() {
+func (downloader *Downloader) ready() {
 	for {
 		if downloader.stop == true {
 			break
