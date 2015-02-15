@@ -8,6 +8,10 @@
 $
 @
 &
+[
+]
+{
+}
 +
 -
 *
@@ -49,6 +53,12 @@ w
 x
 y
 z
+the
+of
+with
+for
+int
+string
 _
 |
 '
