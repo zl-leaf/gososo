@@ -1,7 +1,7 @@
 package pool
 import(
 	"time"
-	"../../utils/queue"
+	"github.com/zl-leaf/gososo/utils/queue"
 )
 
 type Pool struct {

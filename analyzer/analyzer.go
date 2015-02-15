@@ -8,10 +8,12 @@ import(
 	"bufio"
 	"strings"
 	"encoding/json"
+
+	"github.com/zl-leaf/gososo/context"
+	"github.com/zl-leaf/gososo/msg"
+	"github.com/zl-leaf/gososo/utils/socket"
+
 	"github.com/huichen/sego"
-	"../context"
-	"../msg"
-	"../utils/socket"
 )
 
 type Analyzer struct {

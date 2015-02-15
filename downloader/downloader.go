@@ -4,9 +4,10 @@ import(
 	"log"
 	"time"
 	"encoding/json"
-	"../context"
-	"../msg"
-	"../utils/socket"
+
+	"github.com/zl-leaf/gososo/context"
+	"github.com/zl-leaf/gososo/msg"
+	"github.com/zl-leaf/gososo/utils/socket"
 )
 
 type Downloader struct {

@@ -3,11 +3,11 @@ import(
 	"log"
 	"bufio"
 	"os"
-	"../context"
-	"../sosoinit"
-	"../scheduler"
-	"../downloader"
-	"../analyzer"
+	"github.com/zl-leaf/gososo/context"
+	"github.com/zl-leaf/gososo/sosoinit"
+	"github.com/zl-leaf/gososo/scheduler"
+	"github.com/zl-leaf/gososo/downloader"
+	"github.com/zl-leaf/gososo/analyzer"
 )
 
 func main() {

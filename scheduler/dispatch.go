@@ -4,10 +4,10 @@ import(
 	"log"
 	"time"
 	"encoding/json"
-	"../msg"
+	"github.com/zl-leaf/gososo/msg"
 	"github.com/willf/bloom"
-	"../utils/socket"
-	"../utils/queue"
+	"github.com/zl-leaf/gososo/utils/socket"
+	"github.com/zl-leaf/gososo/utils/queue"
 )
 
 var downloadQueue *queue.Queue = queue.New()

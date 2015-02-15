@@ -4,10 +4,10 @@ import(
 	"log"
 	"strings"
 	"encoding/json"
-	"./pool"
-	"../context"
-	"../msg"
-	"../utils/socket"
+	"github.com/zl-leaf/gososo/scheduler/pool"
+	"github.com/zl-leaf/gososo/context"
+	"github.com/zl-leaf/gososo/msg"
+	"github.com/zl-leaf/gososo/utils/socket"
 )
 
 type Scheduler struct {

@@ -3,12 +3,12 @@ package sosoinit
 import(
 	"log"
 	"os"
-	"../context"
-	"../configure"
-	"../scheduler"
-	"../downloader"
-	"../analyzer"
-	"../utils/db"
+	"github.com/zl-leaf/gososo/context"
+	"github.com/zl-leaf/gososo/configure"
+	"github.com/zl-leaf/gososo/scheduler"
+	"github.com/zl-leaf/gososo/downloader"
+	"github.com/zl-leaf/gososo/analyzer"
+	"github.com/zl-leaf/gososo/utils/db"
 )
 
 const(

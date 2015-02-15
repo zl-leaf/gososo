@@ -1,6 +1,6 @@
 package sosoinit
 import(
-	"../configure"
+	"github.com/zl-leaf/gososo/configure"
 	"testing"
 	"log"
 )
