@@ -8,11 +8,13 @@ import(
 	"regexp"
 )
 
-func downloadHTML(u, downloadPath string) (htmlPath string, urls []string, err error) {
+func downloadHTML(u, downloadPath string) (statusCode int, htmlPath string, urls []string, err error) {
 	resp, err := http.Get(u)
 	if err != nil {
 		return
 	}
+
+	statusCode = resp.StatusCode
 
 	defer resp.Body.Close()
 	b, err := ioutil.ReadAll(resp.Body)

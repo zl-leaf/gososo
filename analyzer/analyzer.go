@@ -12,6 +12,7 @@ import(
 	"github.com/zl-leaf/gososo/context"
 	"github.com/zl-leaf/gososo/msg"
 	"github.com/zl-leaf/gososo/utils/socket"
+	"github.com/zl-leaf/gososo/utils/db"
 
 	"github.com/huichen/sego"
 )
@@ -24,6 +25,8 @@ type Analyzer struct {
 	stop bool
 }
 
+type Analyzers []*Analyzer
+
 func New(context *context.Context, master, dictionaryPath, stopwordsPath string) (analyzer *Analyzer) {
 	analyzer = &Analyzer{context:context, master:master}
 	analyzer.segmenter.LoadDictionary(dictionaryPath)
@@ -32,6 +35,29 @@ func New(context *context.Context, master, dictionaryPath, stopwordsPath string)
 		analyzer.stopwords = stopwords
 	} else {
 		analyzer.stopwords = make(map[string]int)
+	}
+	return
+}
+
+func (analyzers Analyzers) Init() (err error) {
+	for _,analyzer := range analyzers {
+		go analyzer.ready()
+	}
+	
+	return
+}
+
+func (analyzers Analyzers) Start() (err error) {
+	for _,analyzer := range analyzers {
+		analyzer.stop = false
+	}
+	
+	return
+}
+
+func (analyzers Analyzers) Stop() (err error) {
+	for _,analyzer := range analyzers {
+		analyzer.stop = true
 	}
 	return
 }
@@ -56,15 +82,6 @@ func getStopwrods(f string) (map[string]int,error){
         stopwords[word] = 0
 	}
 	return stopwords, nil
-}
-
-func (analyzer *Analyzer) Start() (err error) {
-	go analyzer.ready()
-	return
-}
-
-func (analyzer *Analyzer)Stop() {
-	analyzer.stop = true
 }
 
 /**
@@ -120,7 +137,74 @@ func (analyzer *Analyzer) ready() {
 		}
 
 		log.Println("开始分析url："+analyseOrderMsg.URL+" html文件在："+analyseOrderMsg.Path)
-		analyzer.analyse(analyseOrderMsg.Path)
+		document := analyzer.analyse(analyseOrderMsg.Path)
+		analyzer.WriteURLInfo(analyseOrderMsg.URL, analyseOrderMsg.StatusCode, document)
 		
+	}
+}
+
+func (analyzer *Analyzer) WriteURLInfo(url string, statusCode int, document *Document) {
+	component,_ := analyzer.context.GetComponent("database")
+	database := component.(*db.DatabaseConfig)
+	sql,_ := database.Open()
+
+	var urlId int64
+	err := sql.QueryRow("SELECT id FROM url_infos WHERE url=?", url).Scan(&urlId)
+	if err != nil {
+		log.Println(err)
+	}
+
+	now := time.Now().Unix()
+	if urlId > 0 {
+		// 更新url信息
+		stmtIns, err := sql.Prepare("UPDATE url_infos SET statuscode=?, title=?, last_modified=?, description=? WHERE url=?")
+		if err != nil {
+			log.Println(err)
+		}
+		defer stmtIns.Close()
+		stmtIns.Exec(statusCode, document.Title, now, document.MainContent, url)
+
+		// 更新keywords
+		rows,_ := sql.Query("SELECT id FROM keywords WHERE url_id=?", urlId)
+		ids := make([]int64, 0)
+		for rows.Next() {
+			var id int64
+			rows.Scan(&id)
+			ids = append(ids, id)
+		}
+
+		i := 0
+		for i,id := range ids {
+			keyword := document.Keywords[i]
+			stmtIns, _ := sql.Prepare("UPDATE keywords SET keyword=?, weight=? WHERE id=?")
+			stmtIns.Exec(keyword.Text, keyword.Weight(), id)
+			i++
+		}
+
+		if i<len(document.Keywords) {
+			stmtIns, _ = sql.Prepare("INSERT INTO keywords(keyword, weight, url_id) VALUES( ?, ?, ? )")
+			for ;i<len(document.Keywords);i++ {
+				keyword := document.Keywords[i]
+				stmtIns.Exec(keyword.Text, keyword.Weight(), urlId)
+			}
+		}
+		
+
+	} else {
+		// 插入新url信息
+		stmtIns, err := sql.Prepare("INSERT INTO url_infos(url, statuscode, title, last_modified, description) VALUES( ?, ?, ?, ?, ? )")
+		if err != nil {
+			log.Println(err)
+		}
+		defer stmtIns.Close()
+
+		res,_ := stmtIns.Exec(url, statusCode, document.Title, now, document.MainContent)
+
+		// 插入keywords
+		urlId,_ = res.LastInsertId()
+		stmtIns, _ = sql.Prepare("INSERT INTO keywords(keyword, weight, url_id) VALUES( ?, ?, ? )")
+		for _,keyword := range document.Keywords {
+			stmtIns.Exec(keyword.Text, keyword.Weight(), urlId)
+		}
 	}
 }

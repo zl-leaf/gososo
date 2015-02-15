@@ -4,8 +4,10 @@ import(
 	"log"
 	"time"
 	"encoding/json"
-	"github.com/zl-leaf/gososo/msg"
+
 	"github.com/willf/bloom"
+	
+	"github.com/zl-leaf/gososo/msg"
 	"github.com/zl-leaf/gososo/utils/socket"
 	"github.com/zl-leaf/gososo/utils/queue"
 )
@@ -14,11 +16,6 @@ var downloadQueue *queue.Queue = queue.New()
 var analyseQueue *queue.Queue = queue.New()
 var filter *bloom.BloomFilter = bloom.New(2700000, 5)
 
-func init() {
-	downloadQueue.Add("http://localhost/info/b.html")
-	downloadQueue.Add("http://localhost/info/a.html")
-	// downloadQueue.Add("http://localhost/info/c.html")
-}
 
 func (scheduler *Scheduler) dispatchDownload() {
 	for {
@@ -101,8 +98,8 @@ func addRedirectURLs(redirects []string) {
 	}
 }
 
-func addAnalyseURL(url,htmlPath string) {
-	m := msg.AnalyseOrderMsg{URL:url, Path:htmlPath}
+func addAnalyseURL(url string, statusCode int, htmlPath string) {
+	m := msg.AnalyseOrderMsg{URL:url, StatusCode:statusCode, Path:htmlPath}
 	log.Println("添加"+url+"到分析队列")
 	analyseQueue.Add(m)
 }

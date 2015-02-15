@@ -25,14 +25,15 @@ const(
 )
 
 func Sosoinit(context *context.Context) {
-	var scheduler *scheduler.Scheduler
-	var downloaders []*downloader.Downloader
-	var analyzers []*analyzer.Analyzer
+	var schedulers scheduler.Schedulers
+	var downloaders downloader.Downloaders
+	var analyzers analyzer.Analyzers
+	var database *db.DatabaseConfig
 	config := configure.InitConfig("./config.ini")
 
 	if schedulerConfig,exist := config.GetEntity(SCHEDULER);exist {
 		checkSchedulerConfig(schedulerConfig)
-		scheduler = initScheduler(context, schedulerConfig)
+		schedulers = initScheduler(context, schedulerConfig)
 	}
 
 	if downloaderConfig,exist := config.GetEntity(DOWNLOADER);exist {
@@ -47,13 +48,16 @@ func Sosoinit(context *context.Context) {
 
 	if dbConfig,exist := config.GetEntity(DATABASE);exist {
 		checkDatabaseConfig(dbConfig)
+		database = initDB(dbConfig)
 	} else {
 		log.Fatal("缺少数据库配置")
 	}
 
-	context.AddComponent("scheduler", scheduler)
-	context.AddComponent("downloaders", downloaders)
-	context.AddComponent("analyzers", analyzers)
+	context.AddService("schedulers", schedulers)
+	context.AddService("downloaders", downloaders)
+	context.AddService("analyzers", analyzers)
+
+	context.AddComponent("database", database)
 }
 
 /**
@@ -151,14 +155,17 @@ func checkDatabaseConfig(es []*configure.Entity) {
 /**
  * 初始化调度器
  */
-func initScheduler(context *context.Context, es []*configure.Entity) *scheduler.Scheduler{
-	e := es[0]
-	scheduler := scheduler.New(context, e.GetAttr(PORT))
-	return scheduler
+func initScheduler(context *context.Context, es []*configure.Entity) scheduler.Schedulers {
+	schedulers := make(scheduler.Schedulers, 0)
+	for _,e := range es {
+		s := scheduler.New(context, e.GetAttr(PORT))
+		schedulers = append(schedulers, s)
+	}
+	return schedulers
 }
 
-func initDownloaders(context *context.Context, es []*configure.Entity) []*downloader.Downloader {
-	downloaders := make([]*downloader.Downloader, 0)
+func initDownloaders(context *context.Context, es []*configure.Entity) downloader.Downloaders {
+	downloaders := make(downloader.Downloaders, 0)
 	for _,e := range es {
 		d := downloader.New(context, e.GetAttr(MASTER), e.GetAttr(DOWNLOAD_PATH))
 		downloaders = append(downloaders, d)
@@ -166,11 +173,33 @@ func initDownloaders(context *context.Context, es []*configure.Entity) []*downlo
 	return downloaders
 }
 
-func initAnalyzers(context *context.Context, es []*configure.Entity) []*analyzer.Analyzer {
-	analyzers := make([]*analyzer.Analyzer, 0)
+func initAnalyzers(context *context.Context, es []*configure.Entity) analyzer.Analyzers {
+	analyzers := make(analyzer.Analyzers, 0)
 	for _,e := range es {
 		a := analyzer.New(context, e.GetAttr(MASTER), e.GetAttr(DICTIONARY_PATH), e.GetAttr(STOPWORDS_PATH))
 		analyzers = append(analyzers, a)
 	}
 	return analyzers
+}
+
+func initDB(es []*configure.Entity) *db.DatabaseConfig {
+	if len(es) > 1 {
+		log.Fatal("数据库配置重复")
+	}
+	e := es[0]
+	host := e.GetAttr("host")
+	username := e.GetAttr("username")
+	password := e.GetAttr("password")
+	dbname := e.GetAttr("dbname")
+	charset := e.GetAttr("charset")
+
+	m := make(map[string]string)
+	m["host"] = host
+	m["username"] = username
+	m["password"] = password
+	m["dbname"] = dbname
+	m["charset"] = charset
+
+	databaseConfig := db.New(m)
+	return databaseConfig
 }

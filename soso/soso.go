@@ -3,29 +3,28 @@ import(
 	"log"
 	"bufio"
 	"os"
+
 	"github.com/zl-leaf/gososo/context"
 	"github.com/zl-leaf/gososo/sosoinit"
-	"github.com/zl-leaf/gososo/scheduler"
-	"github.com/zl-leaf/gososo/downloader"
-	"github.com/zl-leaf/gososo/analyzer"
 )
 
 func main() {
 	context := context.New()
 	sosoinit.Sosoinit(context)
 
-	var schedul *scheduler.Scheduler
-	var downloaders []*downloader.Downloader
-	var analyzers []*analyzer.Analyzer
+	schedulers,_ := context.GetService("schedulers")
+	downloaders,_ := context.GetService("downloaders")
+	analyzers,_ := context.GetService("analyzers")
 
-	if c,exist := context.GetComponent("scheduler");exist {
-		schedul = c.(*scheduler.Scheduler)
+	// 启动监听
+	if schedulers != nil {
+		schedulers.Init()
 	}
-	if c,exist := context.GetComponent("downloaders");exist {
-		downloaders = c.([]*downloader.Downloader)
+	if downloaders != nil {
+		downloaders.Init()
 	}
-	if c,exist := context.GetComponent("analyzers");exist {
-		analyzers = c.([]*analyzer.Analyzer)
+	if analyzers != nil {
+		analyzers.Init()
 	}
 
 	log.Println("初始化完成")
@@ -36,39 +35,36 @@ func main() {
 		command := string(data)
 		switch {
 			case command=="start":
-				if schedul != nil {
-					err := schedul.Start()
+				if schedulers != nil {
+					err := schedulers.Start()
 					if err != nil {
 						log.Println("调度器启动失败，错误如下")
 						log.Println(err)
 					}
 				}
 				if downloaders != nil {
-					for _,d := range downloaders {
-						err := d.Start()
-						if err != nil {
-							log.Println("下载器启动失败，错误如下")
-							log.Println(err)
-						}
+					err := downloaders.Start()
+					if err != nil {
+						log.Println("下载器启动失败，错误如下")
+						log.Println(err)
 					}
 				}
 				if analyzers != nil {
-					for _, a := range analyzers {
-						err := a.Start()
-						if err != nil {
-							log.Println("分析器启动失败，错误如下")
-							log.Println(err)
-						}
+					err := analyzers.Start()
+					if err != nil {
+						log.Println("分析器启动失败，错误如下")
+						log.Println(err)
 					}
 				}
 			case command=="exit":
-				if schedul != nil {
-					schedul.Stop()
+				if schedulers != nil {
+					schedulers.Stop()
 				}
 				if downloaders != nil {
-					for _,d := range downloaders {
-						d.Stop()
-					}
+					downloaders.Stop()
+				}
+				if analyzers != nil {
+					analyzers.Stop()
 				}
 				os.Exit(1)
 			default:

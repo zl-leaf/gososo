@@ -4,10 +4,12 @@ import(
 	"log"
 	"strings"
 	"encoding/json"
+	
 	"github.com/zl-leaf/gososo/scheduler/pool"
 	"github.com/zl-leaf/gososo/context"
 	"github.com/zl-leaf/gososo/msg"
 	"github.com/zl-leaf/gososo/utils/socket"
+	"github.com/zl-leaf/gososo/utils/db"
 )
 
 type Scheduler struct {
@@ -19,6 +21,8 @@ type Scheduler struct {
 	analyzerPool *pool.Pool
 }
 
+type Schedulers []*Scheduler
+
 func New(context *context.Context, port string) (scheduler *Scheduler){
 	scheduler = &Scheduler{context:context, port:port}
 	scheduler.downloaderPool = pool.NewDownloaderPool()
@@ -26,17 +30,54 @@ func New(context *context.Context, port string) (scheduler *Scheduler){
 	return
 }
 
-func (scheduler *Scheduler) Start() (err error){
-	go scheduler.listen()
-	go scheduler.dispatchDownload()
-	go scheduler.dispatchAnalyse()
+func (schedulers Schedulers) Init() (err error){
+	for _,scheduler := range schedulers {
+		go scheduler.listen()
+	}
+	
 	return
 }
 
-func (scheduler *Scheduler) Stop() {
-	scheduler.listener.Close()
-	scheduler.stop = true
+func (schedulers Schedulers) Start() (err error){
+	for _,scheduler := range schedulers {
+		scheduler.stop = false
+		scheduler.initURLQueue()
+		go scheduler.dispatchDownload()
+		go scheduler.dispatchAnalyse()
+	}
+	
 	return
+}
+
+func (schedulers Schedulers) Stop() (err error) {
+	for _,scheduler := range schedulers {
+		scheduler.stop = true
+	}
+	
+	return
+}
+
+/**
+ * 初始化url抓取队列
+ */
+func (scheduler *Scheduler) initURLQueue() {
+	component,_ := scheduler.context.GetComponent("database")
+	database := component.(*db.DatabaseConfig)
+	sql,_ := database.Open()
+
+	rows, err := sql.Query("SELECT url FROM url_infos")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var url string
+		if err := rows.Scan(&url);err != nil {
+			log.Println(err)
+		}
+		downloadQueue.Add(url)
+	}
 }
 
 /**
@@ -103,7 +144,7 @@ func (scheduler *Scheduler) handle(conn net.Conn) {
     		}
     		
     		log.Println(downloadResultMsg.URL + "下载完成")
-    		addAnalyseURL(downloadResultMsg.URL, downloadResultMsg.Path)
+    		addAnalyseURL(downloadResultMsg.URL, downloadResultMsg.StatusCode, downloadResultMsg.Path)
     		addRedirectURLs(downloadResultMsg.Redirects)
     }
 }

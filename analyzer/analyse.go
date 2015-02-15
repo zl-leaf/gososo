@@ -1,13 +1,12 @@
 package analyzer
 
 import(
-	"fmt"
 	"io"
 	"os"
 	"log"
 )
 
-func (analyzer *Analyzer) analyse(f string) {
+func (analyzer *Analyzer) analyse(f string) (document *Document) {
 	file, err := os.Open(f)
 	defer file.Close()
 	if err != nil {
@@ -28,13 +27,8 @@ func (analyzer *Analyzer) analyse(f string) {
 		html += string(data[:count])
 	}
 
-	document := &Document{}
+	document = &Document{}
 	document.Init(analyzer.segmenter, analyzer.stopwords)
 	document.LoadHTML(html)
-
-
-	keywords := document.Keywords
-	for _,kw := range keywords {
-		fmt.Printf("%s %d %f\n", kw.Text, kw.Count, kw.Weight())
-	}
+	return
 }

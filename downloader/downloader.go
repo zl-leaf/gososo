@@ -17,18 +17,35 @@ type Downloader struct {
 	stop bool
 }
 
+type Downloaders []*Downloader
+
 func New(context *context.Context, master, downloadPath string) (downloader *Downloader){
 	downloader = &Downloader{context:context, master:master, downloadPath:downloadPath}
 	return
 }
 
-func (downloader *Downloader) Start() (err error) {
-	go downloader.ready()
+func (downloaders Downloaders) Init() (err error) {
+	for _,downloader := range downloaders {
+		go downloader.ready()
+	}
+	
 	return
 }
 
-func (downloader *Downloader) Stop() {
-	downloader.stop = true
+func (downloaders Downloaders) Start() (err error) {
+	for _,downloader := range  downloaders {
+		downloader.stop = false
+	}
+	
+	return
+}
+
+func (downloaders Downloaders) Stop() (err error) {
+	for _,downloader := range downloaders {
+		downloader.stop = true
+	}
+	
+	return
 }
 
 /**
@@ -78,11 +95,11 @@ func (downloader *Downloader) ready() {
 		}
 
 		url := string(result)
-		htmlPath,redirects,err := downloadHTML(url, downloader.downloadPath)
+		statusCode,htmlPath,redirects,err := downloadHTML(url, downloader.downloadPath)
 		if err != nil {
 			log.Println(url + "下载失败")
 		} else {
-			downloadResultMsg := msg.DownloadResultMsg{URL:url, Path:htmlPath, Redirects:redirects}
+			downloadResultMsg := msg.DownloadResultMsg{URL:url, StatusCode:statusCode, Path:htmlPath, Redirects:redirects}
 			sendRedirectsToScheduler(downloader.master, downloadResultMsg)
 		}
 	}

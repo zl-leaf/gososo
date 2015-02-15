@@ -8,6 +8,7 @@ import(
 )
 
 type Document struct {
+	Title string
 	MainContent string
 	WordCount int
 	Keywords Keywords
@@ -21,7 +22,7 @@ func (doc *Document) Init(segmenter sego.Segmenter, stopwords map[string]int) {
 }
 
 func (doc *Document)LoadHTML(html string) {
-	doc.MainContent = getMainContent(html)
+	doc.Title, doc.MainContent = getMainContent(html)
 	words := doc.Words()
 	doc.WordCount = len(words)
 	doc.Keywords = getKeywords(doc, words)
@@ -31,7 +32,7 @@ func (doc *Document) Words() ([]*sego.Token){
 	segmenter := doc.Segmenter
 
     // 分词
-    text := []byte(doc.MainContent)
+    text := []byte(doc.Title + "\n" + doc.MainContent)
     segments := segmenter.Segment(text)
 
     words := make([]*sego.Token, 0)
@@ -45,8 +46,8 @@ func (doc *Document) TotalFrequency() int64 {
 	return doc.Segmenter.Dictionary().TotalFrequency()
 }
 
-func getMainContent(html string) string{
-	title := getHTMLTitle(html)
+func getMainContent(html string) (title string, mainCount string) {
+	title = getHTMLTitle(html)
 
 	hrefRegexp := regexp.MustCompile(`(<(head|script|style|noscript).*?>[\s\S]*?<\/(head|script|style|noscript)>|<[^>]+>|&nbsp)`)
 	html = hrefRegexp.ReplaceAllString(html, "")
@@ -128,7 +129,7 @@ func getMainContent(html string) string{
 		}
 	}
 
-	mainCount := ""
+	mainCount = ""
 	for i,line := range lines {
 		if i >= startPos && (i <= endPos || endPos == -1) {
 			line := strings.TrimSpace(line)
@@ -138,9 +139,7 @@ func getMainContent(html string) string{
 		}
 	}
 
-	mainCount = title + mainCount
-
-	return mainCount
+	return title, mainCount
 }
 
 func getHTMLTitle(html string) string{
@@ -152,7 +151,6 @@ func getHTMLTitle(html string) string{
 	 		title += m[1] + " "
 	 	}
 	}
-	title += "\n"
 	return title
 }
 
@@ -192,5 +190,5 @@ func getKeywords(doc *Document, tokens []*sego.Token) Keywords{
 	}
 
 	sort.Sort(keyWords)
-	return keyWords
+	return keyWords[:30]
 }
