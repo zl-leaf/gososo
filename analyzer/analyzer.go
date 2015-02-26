@@ -10,6 +10,7 @@ import(
 	"encoding/json"
 
 	"github.com/zl-leaf/gososo/context"
+	"github.com/zl-leaf/gososo/analyzer/download"
 	"github.com/zl-leaf/gososo/msg"
 	"github.com/zl-leaf/gososo/utils/socket"
 	"github.com/zl-leaf/gososo/utils/db"
@@ -20,6 +21,7 @@ import(
 type Analyzer struct {
 	context *context.Context
 	master string
+	downloadPath string
 	segmenter sego.Segmenter
 	stopwords map[string]int
 	stop bool
@@ -27,8 +29,8 @@ type Analyzer struct {
 
 type Analyzers []*Analyzer
 
-func New(context *context.Context, master, dictionaryPath, stopwordsPath string) (analyzer *Analyzer) {
-	analyzer = &Analyzer{context:context, master:master}
+func New(context *context.Context, master, downloadPath, dictionaryPath, stopwordsPath string) (analyzer *Analyzer) {
+	analyzer = &Analyzer{context:context, master:master, downloadPath:downloadPath}
 	analyzer.segmenter.LoadDictionary(dictionaryPath)
 	stopwords,err := getStopwrods(stopwordsPath)
 	if err == nil {
@@ -122,23 +124,26 @@ func (analyzer *Analyzer) ready() {
 			log.Println(err)
 			continue
 		}
-		data, err := socket.Read(conn)
+		result, err := socket.Read(conn)
 		if err != nil {
 			log.Println("下载器读取信息失败")
 			log.Println(err)
 			continue
 		}
 
-		var analyseOrderMsg msg.AnalyseOrderMsg
-		err = json.Unmarshal(data, &analyseOrderMsg)
+		url := string(result)
+
+		statusCode,htmlPath,redirects,err := download.DownloadHTML(url, analyzer.downloadPath)
+
 		if err != nil {
-			log.Println("解析analyse命令时候出错")
-			break
+			log.Println(url + "下载失败")
+		} else {
+			go sendRedirectsToScheduler(analyzer.master, url, redirects)
 		}
 
-		log.Println("开始分析url："+analyseOrderMsg.URL+" html文件在："+analyseOrderMsg.Path)
-		document := analyzer.analyse(analyseOrderMsg.Path)
-		analyzer.WriteURLInfo(analyseOrderMsg.URL, analyseOrderMsg.StatusCode, document)
+		log.Println("开始分析url："+url+" html文件在："+htmlPath)
+		document := analyzer.analyse(htmlPath)
+		analyzer.WriteURLInfo(url, statusCode, document)
 		
 	}
 }
@@ -206,5 +211,37 @@ func (analyzer *Analyzer) WriteURLInfo(url string, statusCode int, document *Doc
 		for _,keyword := range document.Keywords {
 			stmtIns.Exec(keyword.Text, keyword.Weight(), urlId)
 		}
+	}
+}
+
+func sendRedirectsToScheduler(master string, url string, redirects []string) {
+	downloadResultMsg := msg.DownloadResultMsg{URL:url, Redirects:redirects}
+
+	conn,err := connect(master)
+	if err != nil {
+		log.Println("发送redirect，下载器来链接调度器失败")
+		log.Println(err)
+		return
+	}
+
+	_,err = socket.Write(conn, []byte(msg.DOWNLOAD_OK))
+	if err != nil {
+		log.Println("发送下载完成信息时候出错")
+		return
+	}
+	data,err := socket.Read(conn)
+	if err != nil || string(data) != msg.OK {
+		log.Println("接收master确认信息出错")
+		return
+	}
+
+	result,err := json.Marshal(downloadResultMsg)
+	if err != nil {
+		log.Println("download返回信息json化出错")
+		return
+	}
+	_,err = socket.Write(conn, result)
+	if err != nil {
+		log.Println("发送redirect失败")
 	}
 }

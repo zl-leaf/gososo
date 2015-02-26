@@ -17,42 +17,31 @@ type Scheduler struct {
 	port string
 	listener *net.TCPListener
 	stop bool
-	downloaderPool *pool.Pool
 	analyzerPool *pool.Pool
 }
 
-type Schedulers []*Scheduler
-
 func New(context *context.Context, port string) (scheduler *Scheduler){
 	scheduler = &Scheduler{context:context, port:port}
-	scheduler.downloaderPool = pool.NewDownloaderPool()
 	scheduler.analyzerPool = pool.NewDownloaderPool()
 	return
 }
 
-func (schedulers Schedulers) Init() (err error){
-	for _,scheduler := range schedulers {
-		go scheduler.listen()
-	}
+func (scheduler Scheduler) Init() (err error){
+	go scheduler.listen()
 	
 	return
 }
 
-func (schedulers Schedulers) Start() (err error){
-	for _,scheduler := range schedulers {
-		scheduler.stop = false
-		scheduler.initURLQueue()
-		go scheduler.dispatchDownload()
-		go scheduler.dispatchAnalyse()
-	}
+func (scheduler Scheduler) Start() (err error){
+	scheduler.stop = false
+	scheduler.initURLQueue()
+	go scheduler.dispatch()
 	
 	return
 }
 
-func (schedulers Schedulers) Stop() (err error) {
-	for _,scheduler := range schedulers {
-		scheduler.stop = true
-	}
+func (scheduler Scheduler) Stop() (err error) {
+	scheduler.stop = true
 	
 	return
 }
@@ -76,12 +65,12 @@ func (scheduler *Scheduler) initURLQueue() {
 		if err := rows.Scan(&url);err != nil {
 			log.Println(err)
 		}
-		downloadQueue.Add(url)
+		analyseQueue.Add(url)
 	}
 }
 
 /**
- * 接收下载器和分析器的信息
+ * 接收分析器的信息
  */
 func (scheduler *Scheduler) listen() {
 	tcpAddr, err := net.ResolveTCPAddr("tcp4", "localhost:"+scheduler.port)
@@ -116,10 +105,6 @@ func (scheduler *Scheduler) handle(conn net.Conn) {
 
     message := strings.ToLower(string(data))
     switch {
-    	case message==msg.DOWNLOAD_READY:
-    		log.Printf("%s下载器准备就绪\n", conn.RemoteAddr())
-    		scheduler.downloaderPool.Add(conn)
-
     	case message==msg.ANALYZER_READY:
     		log.Printf("%s分析器准备就绪\n", conn.RemoteAddr())
     		scheduler.analyzerPool.Add(conn)
@@ -144,7 +129,6 @@ func (scheduler *Scheduler) handle(conn net.Conn) {
     		}
     		
     		log.Println(downloadResultMsg.URL + "下载完成")
-    		addAnalyseURL(downloadResultMsg.URL, downloadResultMsg.StatusCode, downloadResultMsg.Path)
     		addRedirectURLs(downloadResultMsg.Redirects)
     }
 }
