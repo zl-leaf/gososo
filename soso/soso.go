@@ -43,6 +43,13 @@ func main() {
 						log.Println(err)
 					}
 				}
+			case command=="http":
+				if api,exist := context.GetService("api");exist {
+					api.Init()
+					api.Start()
+				} else {
+					log.Println("没有api配置")
+				}
 			case command=="exit":
 				if scheduler != nil {
 					scheduler.Stop()
