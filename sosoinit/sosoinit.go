@@ -9,6 +9,8 @@ import(
 	"github.com/zl-leaf/gososo/scheduler"
 	"github.com/zl-leaf/gososo/analyzer"
 	"github.com/zl-leaf/gososo/utils/db"
+	"github.com/zl-leaf/gososo/utils/dictionary"
+	"github.com/zl-leaf/gososo/api"
 )
 
 const(
@@ -16,6 +18,8 @@ const(
 	DOWNLOADER = "downloader"
 	ANALYZER = "analyzer"
 	DATABASE = "database"
+	API = "api"
+	DICTIONARY = "dictionary"
 
 	MASTER = "master"
 	PORT = "port"
@@ -28,6 +32,9 @@ func Sosoinit(context *context.Context) {
 	var scheduler *scheduler.Scheduler
 	var analyzers analyzer.Analyzers
 	var database *db.DatabaseConfig
+	var api *api.Api
+	var dictionary *dictionary.Dictionary
+
 	config := configure.InitConfig("./config.ini")
 
 	if schedulerConfig,exist := config.GetEntity(SCHEDULER);exist {
@@ -40,6 +47,11 @@ func Sosoinit(context *context.Context) {
 		analyzers = initAnalyzers(context, analyzerConfig)
 	}
 
+	if dictionaryConfig,exist := config.GetEntity(DICTIONARY);exist {
+		checkDictConfig(dictionaryConfig)
+		dictionary = initDict(dictionaryConfig)
+	}
+
 	if dbConfig,exist := config.GetEntity(DATABASE);exist {
 		checkDatabaseConfig(dbConfig)
 		database = initDB(dbConfig)
@@ -47,10 +59,17 @@ func Sosoinit(context *context.Context) {
 		log.Fatal("缺少数据库配置")
 	}
 
+	if apiConfig,exist := config.GetEntity(API);exist {
+		checkApiConfig(apiConfig)
+		api = initApi(context, apiConfig)
+	}
+
 	context.AddService("scheduler", scheduler)
 	context.AddService("analyzers", analyzers)
+	context.AddService("api", api)
 
 	context.AddComponent("database", database)
+	context.AddComponent("dictionary", dictionary)
 }
 
 /**
@@ -84,26 +103,6 @@ func checkAnalyzerConfig(es []*configure.Entity) {
 		} else {
 			log.Fatalf("第%d个分析器没有配置下载路径\n", i)
 		}
-
-		if e.GetAttr(DICTIONARY_PATH) != "" {
-			dictionary := e.GetAttr(DICTIONARY_PATH)
-			fi, err := os.Stat(dictionary)
-			if err != nil && !os.IsExist(err) || fi.IsDir() {
-				log.Fatalf("第%d个分析器的词典路径错误\n", i)
-			}
-		} else {
-			log.Fatalf("第%d个分析器没有配置词典路径\n", i)
-		}
-
-		if e.GetAttr(STOPWORDS_PATH) != "" {
-			stopwords := e.GetAttr(STOPWORDS_PATH)
-			fi, err := os.Stat(stopwords)
-			if err != nil && !os.IsExist(err) || fi.IsDir() {
-				log.Fatalf("第%d个分析器的停用词典路径错误\n", i)
-			}
-		} else {
-			log.Fatalf("第%d个分析器没有配置停用词典路径\n", i)
-		}
 	}
 }
 
@@ -115,6 +114,9 @@ func checkDatabaseConfig(es []*configure.Entity) {
 		log.Fatal("数据库配置重复")
 	}
 	e := es[0]
+	if e == nil {
+		return
+	}
 	host := e.GetAttr("host")
 	username := e.GetAttr("username")
 	password := e.GetAttr("password")
@@ -131,6 +133,42 @@ func checkDatabaseConfig(es []*configure.Entity) {
 	databaseConfig := db.New(m)
 	if exist,_ := databaseConfig.CheckDBExist();!exist {
 		log.Fatal("数据库链接失败")
+	}
+}
+
+func checkDictConfig(es []*configure.Entity) {
+	if len(es) > 1 {
+		log.Fatal("dictionary配置重复")
+	}
+
+	e := es[0]
+	if e == nil {
+		return
+	}
+
+	if e.GetAttr(DICTIONARY_PATH) != "" {
+		dictionary := e.GetAttr(DICTIONARY_PATH)
+		fi, err := os.Stat(dictionary)
+		if err != nil && !os.IsExist(err) || fi.IsDir() {
+			log.Println("dictionary的词典路径错误")
+		}
+	}
+
+	if e.GetAttr(STOPWORDS_PATH) != "" {
+		stopwords := e.GetAttr(STOPWORDS_PATH)
+		fi, err := os.Stat(stopwords)
+		if err != nil && !os.IsExist(err) || fi.IsDir() {
+			log.Println("dictionary的停用词典路径错误")
+		}
+	}
+}
+
+/**
+ * 检查api的配置
+ */
+func checkApiConfig(es []*configure.Entity) {
+	if len(es) > 1 {
+		log.Fatal("api配置重复")
 	}
 }
 
@@ -151,7 +189,7 @@ func initScheduler(context *context.Context, es []*configure.Entity) *scheduler.
 func initAnalyzers(context *context.Context, es []*configure.Entity) analyzer.Analyzers {
 	analyzers := make(analyzer.Analyzers, 0)
 	for _,e := range es {
-		a := analyzer.New(context, e.GetAttr(MASTER), e.GetAttr(DOWNLOAD_PATH), e.GetAttr(DICTIONARY_PATH), e.GetAttr(STOPWORDS_PATH))
+		a := analyzer.New(context, e.GetAttr(MASTER), e.GetAttr(DOWNLOAD_PATH))
 		analyzers = append(analyzers, a)
 	}
 	return analyzers
@@ -162,6 +200,9 @@ func initDB(es []*configure.Entity) *db.DatabaseConfig {
 		log.Fatal("数据库配置重复")
 	}
 	e := es[0]
+	if e == nil {
+		return nil
+	}
 	host := e.GetAttr("host")
 	username := e.GetAttr("username")
 	password := e.GetAttr("password")
@@ -177,4 +218,27 @@ func initDB(es []*configure.Entity) *db.DatabaseConfig {
 
 	databaseConfig := db.New(m)
 	return databaseConfig
+}
+
+func initDict(es []*configure.Entity) *dictionary.Dictionary {
+	if len(es) > 1 {
+		log.Fatal("dictionary配置重复")
+	}
+	e := es[0]
+	if e == nil {
+		return nil
+	}
+
+	dict := dictionary.New(e.GetAttr(DICTIONARY_PATH), e.GetAttr(STOPWORDS_PATH))
+	return dict
+}
+
+func initApi(context *context.Context, es []*configure.Entity) *api.Api {
+	if len(es) > 0 {
+		e := es[0]
+		a := api.New(context, e.GetAttr(PORT))
+		return a
+	} else {
+		return nil
+	}
 }

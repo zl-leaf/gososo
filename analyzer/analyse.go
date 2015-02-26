@@ -4,6 +4,8 @@ import(
 	"io"
 	"os"
 	"log"
+
+	"github.com/zl-leaf/gososo/utils/dictionary"
 )
 
 func (analyzer *Analyzer) analyse(f string) (document *Document) {
@@ -28,7 +30,18 @@ func (analyzer *Analyzer) analyse(f string) (document *Document) {
 	}
 
 	document = &Document{}
-	document.Init(analyzer.segmenter, analyzer.stopwords)
-	document.LoadHTML(html)
+	component,exist := analyzer.context.GetComponent("dictionary")
+	if component == nil {
+		log.Println("dictionary error")
+	}
+	if exist {
+		dictionary := component.(*dictionary.Dictionary)
+		segmenter := dictionary.Sego()
+		stopwords := dictionary.Stopwords()
+
+		document.Init(segmenter, stopwords)
+		document.LoadHTML(html)
+	}
+	
 	return
 }

@@ -3,10 +3,6 @@ import(
 	"net"
 	"log"
 	"time"
-	"io"
-	"os"
-	"bufio"
-	"strings"
 	"encoding/json"
 
 	"github.com/zl-leaf/gososo/context"
@@ -29,15 +25,9 @@ type Analyzer struct {
 
 type Analyzers []*Analyzer
 
-func New(context *context.Context, master, downloadPath, dictionaryPath, stopwordsPath string) (analyzer *Analyzer) {
+func New(context *context.Context, master, downloadPath string) (analyzer *Analyzer) {
 	analyzer = &Analyzer{context:context, master:master, downloadPath:downloadPath}
-	analyzer.segmenter.LoadDictionary(dictionaryPath)
-	stopwords,err := getStopwrods(stopwordsPath)
-	if err == nil {
-		analyzer.stopwords = stopwords
-	} else {
-		analyzer.stopwords = make(map[string]int)
-	}
+	
 	return
 }
 
@@ -62,28 +52,6 @@ func (analyzers Analyzers) Stop() (err error) {
 		analyzer.stop = true
 	}
 	return
-}
-
-func getStopwrods(f string) (map[string]int,error){
-	stopwords := make(map[string]int)
-	file, err := os.Open(f)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	rd := bufio.NewReader(file)
-	for {
-		word, err := rd.ReadString('\n')
-		word = strings.TrimSpace(word)
-        if io.EOF == err {
-            break
-        }
-		if err != nil {
-            return nil, err
-        }
-        stopwords[word] = 0
-	}
-	return stopwords, nil
 }
 
 /**
