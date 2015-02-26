@@ -26,13 +26,13 @@ func New(context *context.Context, port string) (scheduler *Scheduler){
 	return
 }
 
-func (scheduler Scheduler) Init() (err error){
+func (scheduler *Scheduler) Init() (err error){
 	go scheduler.listen()
 	
 	return
 }
 
-func (scheduler Scheduler) Start() (err error){
+func (scheduler *Scheduler) Start() (err error){
 	scheduler.stop = false
 	scheduler.initURLQueue()
 	go scheduler.dispatch()
@@ -40,7 +40,7 @@ func (scheduler Scheduler) Start() (err error){
 	return
 }
 
-func (scheduler Scheduler) Stop() (err error) {
+func (scheduler *Scheduler) Stop() (err error) {
 	scheduler.stop = true
 	
 	return

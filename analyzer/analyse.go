@@ -31,9 +31,6 @@ func (analyzer *Analyzer) analyse(f string) (document *Document) {
 
 	document = &Document{}
 	component,exist := analyzer.context.GetComponent("dictionary")
-	if component == nil {
-		log.Println("dictionary error")
-	}
 	if exist {
 		dictionary := component.(*dictionary.Dictionary)
 		segmenter := dictionary.Sego()
