@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>gososo exmple</title>
+	<meta charset="utf8">
+</head>
+<body>
+	<form action="" method="GET">
+		<input name="wd">
+		<input type="submit" value="搜索">
+	</form>
+	<div>
+		<div>
+			{{range .Data}}
+			<h3>
+				<a href="{{.URL}}">{{.Title}}</a>
+			</h3>
+			<div>
+				{{.Keywords}}
+			</div>
+			{{end}}
+		</div>
+	</div>
+</body>
+</html>
