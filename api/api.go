@@ -57,7 +57,6 @@ func (api *Api) ajaxSearchHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 	r.ParseForm()
 	wd := r.Form.Get("wd")
-	log.Println(r.Form)
 
 	component,exist := api.context.GetComponent("dictionary")
 	if !exist {
@@ -94,8 +93,8 @@ func searchFromDB(api *Api, words []string) *msg.SearchResultMsg {
 		database := component.(*db.DatabaseConfig)
 		sql,_ := database.Open()
 
-		query := "select url,title,description from url_infos as url_info join "
-		query += "(select url_id,sum(weight) as w from keywords where keyword in " + wordsString
+		query := "select url,title,description,tmp.keywords from url_infos as url_info join "
+		query += "(select url_id,group_concat(keyword) as keywords,sum(weight) as w from keywords where keyword in " + wordsString
 		query += "group by url_id order by w desc)tmp "
 		query += "on url_info.id=tmp.url_id"
 		rows, err := sql.Query(query)
@@ -109,9 +108,9 @@ func searchFromDB(api *Api, words []string) *msg.SearchResultMsg {
 
 		searchResultMsg.Result = 1
 		for rows.Next() {
-			var url, title,description string
-			if err := rows.Scan(&url, &title, &description);err==nil {
-				searchResultObj := &msg.SearchResultObj{URL:url, Title:title, Description:description}
+			var url, title,description,keywords string
+			if err := rows.Scan(&url, &title, &description, &keywords);err==nil {
+				searchResultObj := &msg.SearchResultObj{URL:url, Title:title, Description:description, Keywords:keywords}
 				searchResultMsg.Data = append(searchResultMsg.Data, searchResultObj)
 			}
 		}
