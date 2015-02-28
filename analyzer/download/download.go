@@ -13,10 +13,14 @@ func DownloadHTML(u, downloadPath string) (statusCode int, htmlPath string, urls
 	if err != nil {
 		return
 	}
+	defer resp.Body.Close()
 
 	statusCode = resp.StatusCode
+	if statusCode != 200 {
+		return
+	}
 
-	defer resp.Body.Close()
+	
 	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return

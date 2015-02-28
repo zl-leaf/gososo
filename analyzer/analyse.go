@@ -12,7 +12,8 @@ func (analyzer *Analyzer) analyse(f string) (document *Document) {
 	file, err := os.Open(f)
 	defer file.Close()
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		return
 	}
 
 	html := ""
@@ -23,7 +24,7 @@ func (analyzer *Analyzer) analyse(f string) (document *Document) {
 			break
 		}
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
 			break
 		}
 		html += string(data[:count])
