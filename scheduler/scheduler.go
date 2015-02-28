@@ -18,16 +18,22 @@ type Scheduler struct {
 	listener *net.TCPListener
 	stop bool
 	analyzerPool *pool.Pool
+	maxTotal int64
 }
 
-func New(context *context.Context, port string) (scheduler *Scheduler){
+func New(context *context.Context, port string, maxTotal int64) (scheduler *Scheduler){
 	scheduler = &Scheduler{context:context, port:port}
 	scheduler.analyzerPool = pool.NewDownloaderPool()
+	if maxTotal > 0 {
+		scheduler.maxTotal = maxTotal
+	} else {
+		scheduler.maxTotal = -1
+	}
 	return
 }
 
 func (scheduler *Scheduler) Init() (err error){
-	go scheduler.listen()
+	go scheduler.listenConnect()
 	
 	return
 }
@@ -72,7 +78,7 @@ func (scheduler *Scheduler) initURLQueue() {
 /**
  * 接收分析器的信息
  */
-func (scheduler *Scheduler) listen() {
+func (scheduler *Scheduler) listenConnect() {
 	tcpAddr, err := net.ResolveTCPAddr("tcp4", "localhost:"+scheduler.port)
 	if err != nil {
 		return

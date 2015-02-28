@@ -15,7 +15,14 @@ var filter *bloom.BloomFilter = bloom.New(2700000, 5)
 
 
 func (scheduler *Scheduler) dispatch() {
+	i := int64(0)
 	for {
+		if scheduler.maxTotal > 0 {
+			i++
+			if i > scheduler.maxTotal {
+				break
+			}
+		}
 		if scheduler.stop {
 			break
 		}
