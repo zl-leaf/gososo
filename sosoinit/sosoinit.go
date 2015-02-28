@@ -3,6 +3,7 @@ package sosoinit
 import(
 	"log"
 	"os"
+	"strconv"
 	
 	"github.com/zl-leaf/gososo/context"
 	"github.com/zl-leaf/gososo/configure"
@@ -26,6 +27,9 @@ const(
 	DOWNLOAD_PATH = "download_path"
 	DICTIONARY_PATH = "dictionary_path"
 	STOPWORDS_PATH = "stopwords_path"
+	MAX_TOTAL = "max_total"
+	MAXP_ROCESS = "max_process"
+	INTERVAL = "interval"
 )
 
 func Sosoinit(context *context.Context) {
@@ -178,7 +182,8 @@ func checkApiConfig(es []*configure.Entity) {
 func initScheduler(context *context.Context, es []*configure.Entity) *scheduler.Scheduler {
 	if len(es) > 0 {
 		e := es[0]
-		scheduler := scheduler.New(context, e.GetAttr(PORT))
+		maxTotal,_ := strconv.ParseInt(e.GetAttr(MAX_TOTAL), 10, 64)
+		scheduler := scheduler.New(context, e.GetAttr(PORT), maxTotal)
 		return scheduler
 	} else {
 		return nil
@@ -189,7 +194,11 @@ func initScheduler(context *context.Context, es []*configure.Entity) *scheduler.
 func initAnalyzers(context *context.Context, es []*configure.Entity) analyzer.Analyzers {
 	analyzers := make(analyzer.Analyzers, 0)
 	for _,e := range es {
-		a := analyzer.New(context, e.GetAttr(MASTER), e.GetAttr(DOWNLOAD_PATH))
+		master := e.GetAttr(MASTER)
+		downloadPath := e.GetAttr(DOWNLOAD_PATH)
+		maxProcess,_ := strconv.Atoi(e.GetAttr(MAXP_ROCESS))
+		interval,_ := strconv.Atoi(e.GetAttr(INTERVAL))
+		a := analyzer.New(context, master, downloadPath, maxProcess, interval)
 		analyzers = append(analyzers, a)
 	}
 	return analyzers
