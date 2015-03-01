@@ -44,7 +44,11 @@ func New(context *context.Context, master, downloadPath string, maxProcess int, 
 func (analyzers Analyzers) Init() (err error) {
 	for _,analyzer := range analyzers {
 		analyzer.sembox = make(chan string, analyzer.maxProcess)
-		go analyzer.ready()
+		for i :=0; i < analyzer.maxProcess; i++ {
+			analyzer.sembox <- msg.OK
+		}
+		analyzer.stop = true
+		go analyzer.work()
 	}
 	
 	return
@@ -53,9 +57,6 @@ func (analyzers Analyzers) Init() (err error) {
 func (analyzers Analyzers) Start() (err error) {
 	for _,analyzer := range analyzers {
 		analyzer.stop = false
-		for i :=0; i < analyzer.maxProcess; i++ {
-			analyzer.sembox <- msg.OK
-		}
 	}
 	
 	return
@@ -87,10 +88,11 @@ func connect(ip string) (*net.TCPConn, error) {
 /**
  * 与调度器建立链接
  */
-func (analyzer *Analyzer) ready() {
+func (analyzer *Analyzer) work() {
 	for {
 		if analyzer.stop == true {
-			break
+			time.Sleep(1 * time.Second)
+			continue
 		}
 
 		if msg.OK == <- analyzer.sembox {
@@ -164,18 +166,15 @@ func WriteURLInfo(analyzer *Analyzer, url string, statusCode int, document *Docu
 	database := component.(*db.DatabaseConfig)
 	sql,_ := database.Open()
 
+	now := time.Now().Unix()
 	var urlId int64
 	err := sql.QueryRow("SELECT id FROM url_infos WHERE url=?", url).Scan(&urlId)
-	if err != nil {
-		log.Println(err)
-	}
-
-	now := time.Now().Unix()
-	if urlId > 0 {
+	if err == nil {
 		// 更新url信息
 		stmtIns, err := sql.Prepare("UPDATE url_infos SET statuscode=?, title=?, last_modified=?, description=? WHERE url=?")
 		if err != nil {
 			log.Println(err)
+			// return
 		}
 		defer stmtIns.Close()
 		if statusCode == 200 {
@@ -196,6 +195,9 @@ func WriteURLInfo(analyzer *Analyzer, url string, statusCode int, document *Docu
 
 		i := 0
 		for i,id := range ids {
+			if i>= len(document.Keywords) {
+				break
+			}
 			keyword := document.Keywords[i]
 			stmtIns, _ := sql.Prepare("UPDATE keywords SET keyword=?, weight=? WHERE id=?")
 			stmtIns.Exec(keyword.Text, keyword.Weight(), id)
@@ -209,13 +211,19 @@ func WriteURLInfo(analyzer *Analyzer, url string, statusCode int, document *Docu
 				stmtIns.Exec(keyword.Text, keyword.Weight(), urlId)
 			}
 		}
-		
 
+		if i<len(ids) {
+			for _,id := range ids {
+				stmtIns, _ := sql.Prepare("DELETE FROM keywords WHERE id=?")
+				stmtIns.Exec(id)
+			}
+		}
 	} else {
 		// 插入新url信息
 		stmtIns, err := sql.Prepare("INSERT INTO url_infos(url, statuscode, title, last_modified, description) VALUES( ?, ?, ?, ?, ? )")
 		if err != nil {
 			log.Println(err)
+			// return
 		}
 		defer stmtIns.Close()
 

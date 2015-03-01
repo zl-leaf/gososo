@@ -50,13 +50,14 @@ func main() {
 				} else {
 					log.Println("没有api配置")
 				}
-			case command=="exit":
+			case command=="stop":
 				if scheduler != nil {
 					scheduler.Stop()
 				}
 				if analyzers != nil {
 					analyzers.Stop()
 				}
+			case command=="exit":
 				os.Exit(1)
 			default:
 				log.Println("命令错误")

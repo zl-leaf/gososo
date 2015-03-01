@@ -4,6 +4,7 @@ import(
 	"log"
 	"strings"
 	"encoding/json"
+	"time"
 	
 	"github.com/zl-leaf/gososo/scheduler/pool"
 	"github.com/zl-leaf/gososo/context"
@@ -39,10 +40,9 @@ func (scheduler *Scheduler) Init() (err error){
 }
 
 func (scheduler *Scheduler) Start() (err error){
-	scheduler.stop = false
 	scheduler.initURLQueue()
+	scheduler.stop = false
 	go scheduler.dispatch()
-	
 	return
 }
 
@@ -66,6 +66,8 @@ func (scheduler *Scheduler) initURLQueue() {
 		return
 	}
 	defer rows.Close()
+
+	analyseQueue.Clear()
 	for rows.Next() {
 		var url string
 		if err := rows.Scan(&url);err != nil {
@@ -90,8 +92,9 @@ func (scheduler *Scheduler) listenConnect() {
 
 	listener := scheduler.listener
 	for {
+		time.Sleep(1 * time.Second)
 		if scheduler.stop == true {
-			break
+			continue
 		}
 		conn, err := listener.Accept()
 		if err != nil {

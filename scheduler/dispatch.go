@@ -13,8 +13,8 @@ import(
 var analyseQueue *queue.Queue = queue.New()
 var filter *bloom.BloomFilter = bloom.New(2700000, 5)
 
-
 func (scheduler *Scheduler) dispatch() {
+	filter.ClearAll()
 	i := int64(0)
 	for {
 		if scheduler.maxTotal > 0 {
@@ -23,15 +23,16 @@ func (scheduler *Scheduler) dispatch() {
 				break
 			}
 		}
+
+		time.Sleep(1 * time.Second)
 		if scheduler.stop {
 			break
 		}
-		time.Sleep(1 * time.Second)
+		
 
 		if analyseQueue.Empty() {
 			continue
 		}
-
 		e, err := analyseQueue.Head()
 		if err != nil {
 			continue
@@ -62,7 +63,6 @@ func addRedirectURLs(redirects []string) {
 		if redirect == "" {
 			continue
 		}
-		log.Println("添加"+redirect+"到下载队列")
 		analyseQueue.Add(redirect)
 	}
 }
