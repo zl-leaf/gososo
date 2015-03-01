@@ -13,10 +13,13 @@
 		<div>
 			{{range .Data}}
 			<h3>
-				<a href="{{.URL}}">{{.Title}}</a>
+				<a href="/?redirect={{.URL}}&hit={{.Keywords}}">{{.Title}}</a>
 			</h3>
 			<div>
 				{{.Keywords}}
+			</div>
+			<div>
+				{{.Weight}}
 			</div>
 			{{end}}
 		</div>
