@@ -35,3 +35,7 @@ func (q *Queue) Head() (*list.Element, error){
 	q.l.Remove(e)
 	return e, nil
 }
+
+func (q *Queue) Clear() {
+	q.l.Init()
+}
