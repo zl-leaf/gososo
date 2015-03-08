@@ -16,6 +16,9 @@ import(
 var searchUrl string = "http://localhost:9101/ajaxsearch/"
 
 func main() {
+	http.Handle("/js/", http.FileServer(http.Dir("example/static")))
+	http.Handle("/css/", http.FileServer(http.Dir("example/static")))
+
 	http.HandleFunc("/",indexHandler)
     err := http.ListenAndServe(":8080", nil)
     if err != nil {
@@ -46,7 +49,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 						}
 						hit = hit + "," + his
 					}
-					
+
 				}
 			}
 			hit = url.QueryEscape(hit)
@@ -54,10 +57,9 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	    		cookie := http.Cookie{Name: "hit", Value: hit, Path: "/", Expires: expire, MaxAge: 30*86400}
 	    		http.SetCookie(w, &cookie)
 		}
-		
-    		http.Redirect(w, r, redirect, http.StatusFound)
-		// w.Write([]byte(hit))
-    		return
+
+    	http.Redirect(w, r, redirect, http.StatusFound)
+    	return
 	}
 
 	if strings.TrimSpace(wd) != "" {
@@ -92,6 +94,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		params := make(map[string]interface{})
+		params["wd"] = wd
 		params["Data"] = searchResultMsg.Data
 
 		t, err := template.ParseFiles("example/views/search.html")
@@ -107,9 +110,9 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	    }
 	    t.Execute(w, nil)
 	}
-	
+
 }
 
 func redirectTo() {
-	
+
 }

@@ -1,0 +1,14 @@
+.container {
+    margin: 0;
+    padding: 0;
+    padding-left: 10px;
+}
+
+.item {
+    margin-top: 30px;
+}
+
+.item h3 {
+    padding: 0;
+    margin: 3px;
+}
