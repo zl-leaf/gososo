@@ -3,7 +3,7 @@ import(
 	"net"
 	"log"
 	"time"
-	
+
 	"github.com/zl-leaf/gososo/utils/socket"
 	"github.com/zl-leaf/gososo/utils/queue"
 
@@ -15,20 +15,13 @@ var filter *bloom.BloomFilter = bloom.New(2700000, 5)
 
 func (scheduler *Scheduler) dispatch() {
 	filter.ClearAll()
-	i := int64(0)
+	finishPageNum := int64(0)
 	for {
-		if scheduler.maxTotal > 0 {
-			i++
-			if i > scheduler.maxTotal {
-				break
-			}
-		}
-
 		time.Sleep(1 * time.Second)
 		if scheduler.stop {
 			break
 		}
-		
+
 
 		if analyseQueue.Empty() {
 			continue
@@ -43,7 +36,11 @@ func (scheduler *Scheduler) dispatch() {
 			continue
 		}
 
-		conn := scheduler.analyzerPool.Get().(net.Conn)
+		v,err := scheduler.analyzerPool.Get(url)
+		if err != nil {
+			continue
+		}
+		conn := v.(net.Conn)
 		log.Println("向分析器发送url："+url)
 		_,err = socket.Write(conn, []byte(url))
 		if err != nil {
@@ -52,6 +49,14 @@ func (scheduler *Scheduler) dispatch() {
 		}
 		conn.Close()
 		filter.Add([]byte(url))
+
+		if scheduler.maxTotal > 0 {
+			finishPageNum++
+			if finishPageNum >= scheduler.maxTotal {
+				log.Println("抓取达到上限")
+				break
+			}
+		}
 	}
 }
 

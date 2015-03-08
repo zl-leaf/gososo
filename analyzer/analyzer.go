@@ -16,16 +16,23 @@ type Analyzer struct {
 	context *context.Context
 	master string
 	downloadPath string
-	stop bool
+	matching string
 	maxProcess int
 	interval int
+	stop bool
 	sembox chan string
 }
 
 type Analyzers []*Analyzer
 
-func New(context *context.Context, master, downloadPath string, maxProcess int, interval int) (analyzer *Analyzer) {
+func New(context *context.Context, master string, downloadPath string, matching string, maxProcess int, interval int) (analyzer *Analyzer) {
 	analyzer = &Analyzer{context:context, master:master, downloadPath:downloadPath}
+	// 初始化匹配url正则表达式
+	if matching != "" {
+		analyzer.matching = matching
+	} else {
+		analyzer.matching = "ALL"
+	}
 	// 初始化并发数
 	if maxProcess > 0 {
 		analyzer.maxProcess = maxProcess
@@ -50,7 +57,6 @@ func (analyzers Analyzers) Init() (err error) {
 		analyzer.stop = true
 		go analyzer.work()
 	}
-	
 	return
 }
 
@@ -58,7 +64,6 @@ func (analyzers Analyzers) Start() (err error) {
 	for _,analyzer := range analyzers {
 		analyzer.stop = false
 	}
-	
 	return
 }
 
@@ -102,7 +107,20 @@ func (analyzer *Analyzer) work() {
 				log.Println(err)
 				continue
 			}
-			
+
+			_,err = socket.Write(conn, []byte("analyzer_ready"))
+			if err != nil {
+				continue
+			}
+			data, err := socket.Read(conn)
+			if err != nil || string(data) != msg.OK {
+				continue
+			}
+			_,err = socket.Write(conn, []byte(analyzer.matching))
+			if err != nil {
+				continue
+			}
+
 			url,err := getDownloadUrl(conn)
 			if err != nil {
 				log.Println("获取下载链接失败")
@@ -112,7 +130,7 @@ func (analyzer *Analyzer) work() {
 			go crawlUrl(analyzer, url, analyzer.sembox)
 		}
 		time.Sleep(time.Duration(analyzer.interval) * time.Second)
-		
+
 	}
 }
 
@@ -126,15 +144,14 @@ func crawlUrl(analyzer *Analyzer, url string, sembox chan string) {
 		log.Println(url + "下载失败")
 	} else {
 		go sendRedirectsToScheduler(analyzer.master, url, redirects)
-	}
-
-	if statusCode != 200 {
-		log.Println(url+"返回码不是200")
-		WriteURLInfo(analyzer, url, statusCode, nil)
-	} else {
-		log.Println("开始分析url："+url+" html文件在："+htmlPath)
-		document := analyzer.analyse(htmlPath)
-		WriteURLInfo(analyzer, url, statusCode, document)
+		if statusCode != 200 {
+			log.Println(url+"返回码不是200")
+			WriteURLInfo(analyzer, url, statusCode, nil)
+		} else {
+			log.Println("开始分析url："+url+" html文件在："+htmlPath)
+			document := analyzer.analyse(htmlPath)
+			WriteURLInfo(analyzer, url, statusCode, document)
+		}
 	}
 
 	sembox <- msg.OK
@@ -145,10 +162,6 @@ func crawlUrl(analyzer *Analyzer, url string, sembox chan string) {
  */
 func getDownloadUrl(conn *net.TCPConn) (url string, err error) {
 	defer conn.Close()
-	_,err = socket.Write(conn, []byte("analyzer_ready"))
-	if err != nil {
-		return
-	}
 	result, err := socket.Read(conn)
 	if err != nil {
 		return
@@ -174,7 +187,7 @@ func WriteURLInfo(analyzer *Analyzer, url string, statusCode int, document *Docu
 		stmtIns, err := sql.Prepare("UPDATE url_infos SET statuscode=?, title=?, last_modified=?, description=? WHERE url=?")
 		if err != nil {
 			log.Println(err)
-			// return
+			return
 		}
 		defer stmtIns.Close()
 		if statusCode == 200 {
@@ -223,17 +236,19 @@ func WriteURLInfo(analyzer *Analyzer, url string, statusCode int, document *Docu
 		stmtIns, err := sql.Prepare("INSERT INTO url_infos(url, statuscode, title, last_modified, description) VALUES( ?, ?, ?, ?, ? )")
 		if err != nil {
 			log.Println(err)
-			// return
+			return
 		}
 		defer stmtIns.Close()
-
-		res,_ := stmtIns.Exec(url, statusCode, document.Title, now, document.MainContent)
-
-		// 插入keywords
-		urlId,_ = res.LastInsertId()
-		stmtIns, _ = sql.Prepare("INSERT INTO keywords(keyword, weight, url_id) VALUES( ?, ?, ? )")
-		for _,keyword := range document.Keywords {
-			stmtIns.Exec(keyword.Text, keyword.Weight(), urlId)
+		res,err := stmtIns.Exec(url, statusCode, document.Title, now, document.MainContent)
+		if err == nil {
+			// 插入keywords
+			urlId,_ = res.LastInsertId()
+			stmtIns, _ = sql.Prepare("INSERT INTO keywords(keyword, weight, url_id) VALUES( ?, ?, ? )")
+			for _,keyword := range document.Keywords {
+				stmtIns.Exec(keyword.Text, keyword.Weight(), urlId)
+			}
+		} else {
+			log.Println(err)
 		}
 	}
 }

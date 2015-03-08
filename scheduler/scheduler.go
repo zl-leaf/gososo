@@ -5,7 +5,7 @@ import(
 	"strings"
 	"encoding/json"
 	"time"
-	
+
 	"github.com/zl-leaf/gososo/scheduler/pool"
 	"github.com/zl-leaf/gososo/context"
 	"github.com/zl-leaf/gososo/msg"
@@ -18,13 +18,13 @@ type Scheduler struct {
 	port string
 	listener *net.TCPListener
 	stop bool
-	analyzerPool *pool.Pool
+	analyzerPool *pool.AnalyzerPool
 	maxTotal int64
 }
 
 func New(context *context.Context, port string, maxTotal int64) (scheduler *Scheduler){
 	scheduler = &Scheduler{context:context, port:port}
-	scheduler.analyzerPool = pool.NewDownloaderPool()
+	scheduler.analyzerPool = pool.NewAnalyzerPool()
 	if maxTotal > 0 {
 		scheduler.maxTotal = maxTotal
 	} else {
@@ -35,7 +35,6 @@ func New(context *context.Context, port string, maxTotal int64) (scheduler *Sche
 
 func (scheduler *Scheduler) Init() (err error){
 	go scheduler.listenConnect()
-	
 	return
 }
 
@@ -48,7 +47,6 @@ func (scheduler *Scheduler) Start() (err error){
 
 func (scheduler *Scheduler) Stop() (err error) {
 	scheduler.stop = true
-	
 	return
 }
 
@@ -115,8 +113,18 @@ func (scheduler *Scheduler) handle(conn net.Conn) {
     message := strings.ToLower(string(data))
     switch {
     	case message==msg.ANALYZER_READY:
-    		log.Printf("%s分析器准备就绪\n", conn.RemoteAddr())
-    		scheduler.analyzerPool.Add(conn)
+			_,err = socket.Write(conn, []byte(msg.OK))
+			if err != nil {
+				log.Println("发送接受准备确认信息出错")
+				break
+			}
+			data,err := socket.Read(conn)
+			if err != nil {
+				log.Println("接收url匹配信息出错")
+				break
+			}
+    		log.Printf("%s分析器准备就绪，负责分析%s\n", conn.RemoteAddr(), string(data))
+    		scheduler.analyzerPool.Add(string(data), conn)
 
     	case message==msg.DOWNLOAD_OK:
     		_,err = socket.Write(conn, []byte(msg.OK))
@@ -136,7 +144,7 @@ func (scheduler *Scheduler) handle(conn net.Conn) {
     			log.Println("解析download result时候出错")
     			break
     		}
-    		
+
     		log.Println(downloadResultMsg.URL + "下载完成")
     		addRedirectURLs(downloadResultMsg.Redirects)
     }

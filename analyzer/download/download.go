@@ -6,6 +6,9 @@ import(
 	"path/filepath"
 	"os"
 	"regexp"
+	"errors"
+	"strings"
+	"log"
 )
 
 func DownloadHTML(u, downloadPath string) (statusCode int, htmlPath string, urls []string, err error) {
@@ -20,9 +23,15 @@ func DownloadHTML(u, downloadPath string) (statusCode int, htmlPath string, urls
 		return
 	}
 
-	
 	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
+		return
+	}
+
+	contentType := strings.ToLower(http.DetectContentType(b))
+	if strings.Index(contentType,"text/html" ) > 0  {
+		log.Println("类型错误："+contentType)
+		err = errors.New("文件类型不是html")
 		return
 	}
 	html := string(b)

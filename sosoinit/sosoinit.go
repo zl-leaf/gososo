@@ -4,7 +4,7 @@ import(
 	"log"
 	"os"
 	"strconv"
-	
+
 	"github.com/zl-leaf/gososo/context"
 	"github.com/zl-leaf/gososo/configure"
 	"github.com/zl-leaf/gososo/scheduler"
@@ -30,6 +30,7 @@ const(
 	MAX_TOTAL = "max_total"
 	MAXP_ROCESS = "max_process"
 	INTERVAL = "interval"
+	MATCHING = "matching"
 )
 
 func Sosoinit(context *context.Context) {
@@ -188,7 +189,7 @@ func initScheduler(context *context.Context, es []*configure.Entity) *scheduler.
 	} else {
 		return nil
 	}
-	
+
 }
 
 func initAnalyzers(context *context.Context, es []*configure.Entity) analyzer.Analyzers {
@@ -196,9 +197,10 @@ func initAnalyzers(context *context.Context, es []*configure.Entity) analyzer.An
 	for _,e := range es {
 		master := e.GetAttr(MASTER)
 		downloadPath := e.GetAttr(DOWNLOAD_PATH)
+		matching := e.GetAttr(MATCHING)
 		maxProcess,_ := strconv.Atoi(e.GetAttr(MAXP_ROCESS))
 		interval,_ := strconv.Atoi(e.GetAttr(INTERVAL))
-		a := analyzer.New(context, master, downloadPath, maxProcess, interval)
+		a := analyzer.New(context, master, downloadPath, matching, maxProcess, interval)
 		analyzers = append(analyzers, a)
 	}
 	return analyzers
