@@ -28,7 +28,7 @@ func (keywords Keywords) Less(i,j int) bool {
 		return true
 	}
 	return false
-} 
+}
 func (keywords Keywords) Swap(i,j int) {keywords[i],keywords[j] = keywords[j],keywords[i]}
 
 func (keyword *Keyword) TF() float64{
@@ -45,9 +45,12 @@ func (keyword *Keyword) IDF() float64{
 
 func (keyword *Keyword) PW() float64 {
 	var res float64 = 0
-	for _,pos := range keyword.Positions {
-		res += 1/(5 * (float64(pos.Row) - 0.8) + float64(pos.Index))
+	if keyword.Positions != nil {
+		for _,pos := range keyword.Positions {
+			res += 1/(5 * (float64(pos.Row) - 0.8) + float64(pos.Index))
+		}
 	}
+
 	return res
 }
 

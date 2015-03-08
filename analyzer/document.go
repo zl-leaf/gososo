@@ -65,7 +65,7 @@ func getMainContent(html string) (title string, mainCount string) {
 		tmpStr := ""
 		for j:=0;j<5 && i+j<lineCount;j++ {
 			line := strings.TrimSpace(lines[i+j])
-			
+
 			if strings.TrimSpace(line) != "" {
 				tmpCharCount += len(strings.Replace(line, " ", "", -1))
 				tmpLineCount ++
@@ -73,7 +73,7 @@ func getMainContent(html string) (title string, mainCount string) {
 			}
 		}
 
-		
+
 		f1 := float32(tmpCharCount)
 		f2 := float32(charCount)
 		f := f1/f2
@@ -190,5 +190,9 @@ func getKeywords(doc *Document, tokens []*sego.Token) Keywords{
 	}
 
 	sort.Sort(keyWords)
-	return keyWords[:30]
+	if len(keyWords) > 30 {
+		return keyWords[:30]
+	} else {
+		return keyWords
+	}
 }
