@@ -8,7 +8,7 @@ type Pool struct {
 	elements *queue.Queue
 }
 
-func NewDownloaderPool() (pool *Pool){
+func NewPool() (pool *Pool){
 	pool = &Pool{}
 	pool.elements = queue.New()
 	return
