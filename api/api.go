@@ -86,7 +86,7 @@ func (api *Api) ajaxSearchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Write([]byte(result))
-	
+
 }
 
 func getSearchData(api *Api, words []string, userHistory []string) *msg.SearchResultMsg {
@@ -145,7 +145,7 @@ func getSearchData(api *Api, words []string, userHistory []string) *msg.SearchRe
 						}
 					}
 				}
-				
+
 			}
 			sort.Sort(searchResultMsg.Data)
 		}
@@ -153,6 +153,6 @@ func getSearchData(api *Api, words []string, userHistory []string) *msg.SearchRe
 		searchResultMsg.Result = -1
 		searchResultMsg.Msg = "服务端故障,数据库链接失败"
 	}
-	
+
 	return searchResultMsg
 }
