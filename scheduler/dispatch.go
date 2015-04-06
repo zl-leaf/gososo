@@ -1,17 +1,20 @@
 package scheduler
 import(
 	"net"
+	"net/url"
 	"log"
 	"time"
 
 	"github.com/zl-leaf/gososo/utils/socket"
 	"github.com/zl-leaf/gososo/utils/queue"
+	"github.com/zl-leaf/gososo/scheduler/robots"
 
 	"github.com/willf/bloom"
 )
 
 var analyseQueue *queue.Queue = queue.New()
 var filter *bloom.BloomFilter = bloom.New(2700000, 5)
+var mRobots *robots.Robots = robots.New("*")
 
 func (scheduler *Scheduler) dispatch() {
 	filter.ClearAll()
@@ -31,6 +34,11 @@ func (scheduler *Scheduler) dispatch() {
 			continue
 		}
 		url := e.Value.(string)
+
+		url = handleURL(url)
+		if url == "" {
+			continue
+		}
 		if filter.Test([]byte(url)) {
 			// 可能已经抓取过
 			continue
@@ -68,6 +76,23 @@ func addRedirectURLs(redirects []string) {
 		if redirect == "" {
 			continue
 		}
-		analyseQueue.Add(redirect)
+		u,err := url.Parse(redirect)
+		if err == nil {
+			robot := mRobots.GetRobot(u.Host)
+			if robot.IsAllow(redirect) {
+				analyseQueue.Add(redirect)
+			}
+		}
 	}
+}
+
+/**
+ * 处理URL，取出后面的Fragment
+ */
+func handleURL(e string) string {
+	u,err := url.Parse(e)
+	if err != nil {
+		return ""
+	}
+	return u.RequestURI()
 }
