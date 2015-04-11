@@ -120,6 +120,9 @@ func GetRobotsContent(host string) (content string, err error) {
 		return
 	}
 	defer resp.Body.Close()
+    if resp.StatusCode == 404 {
+        return
+    }
 
     b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {

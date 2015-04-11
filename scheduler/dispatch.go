@@ -18,13 +18,11 @@ var mRobots *robots.Robots = robots.New("*")
 
 func (scheduler *Scheduler) dispatch() {
 	filter.ClearAll()
-	finishPageNum := int64(0)
 	for {
 		time.Sleep(1 * time.Second)
 		if scheduler.stop {
 			break
 		}
-
 
 		if analyseQueue.Empty() {
 			continue
@@ -57,14 +55,6 @@ func (scheduler *Scheduler) dispatch() {
 		}
 		conn.Close()
 		filter.Add([]byte(url))
-
-		if scheduler.maxTotal > 0 {
-			finishPageNum++
-			if finishPageNum >= scheduler.maxTotal {
-				log.Println("抓取达到上限")
-				break
-			}
-		}
 	}
 }
 
@@ -78,9 +68,11 @@ func addRedirectURLs(redirects []string) {
 		}
 		u,err := url.Parse(redirect)
 		if err == nil {
-			robot := mRobots.GetRobot(u.Host)
-			if robot.IsAllow(redirect) {
-				analyseQueue.Add(redirect)
+			if u.Host != "" {
+				robot := mRobots.GetRobot(u.Host)
+				if robot.IsAllow(redirect) {
+					analyseQueue.Add(redirect)
+				}
 			}
 		}
 	}
@@ -94,5 +86,6 @@ func handleURL(e string) string {
 	if err != nil {
 		return ""
 	}
-	return u.RequestURI()
+	u.Fragment = ""
+	return u.String()
 }

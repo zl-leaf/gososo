@@ -20,6 +20,7 @@ type Scheduler struct {
 	stop bool
 	analyzerPool *pool.AnalyzerPool
 	maxTotal int64
+	crawPage int64
 }
 
 func New(context *context.Context, port string, maxTotal int64) (scheduler *Scheduler){
@@ -30,6 +31,7 @@ func New(context *context.Context, port string, maxTotal int64) (scheduler *Sche
 	} else {
 		scheduler.maxTotal = -1
 	}
+	scheduler.crawPage = int64(0)
 	return
 }
 
@@ -147,5 +149,13 @@ func (scheduler *Scheduler) handle(conn net.Conn) {
 
     		log.Println(downloadResultMsg.URL + "下载完成")
     		addRedirectURLs(downloadResultMsg.Redirects)
+
+			if scheduler.maxTotal > 0 {
+				scheduler.crawPage++
+				if scheduler.crawPage >= scheduler.maxTotal {
+					log.Println("抓取达到上限")
+					scheduler.Stop()
+				}
+			}
     }
 }

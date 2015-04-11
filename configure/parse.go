@@ -54,6 +54,10 @@ func parseConfigStr(configStr string) (config *Config) {
 
 	for _, line := range lines {
 		if len(line) > 0 {
+			if line[0] == '#' {
+				// 注释
+				continue
+			}
 			if line[0] == '[' && line[len(line)-1] == ']' {
 				name := parseConfigEName(line)
 				e = &Entity{name, make(map[string]string)}
@@ -61,12 +65,12 @@ func parseConfigStr(configStr string) (config *Config) {
 			} else {
 				key,value := parseConfigLine(line)
 				if e == nil {
-					e = config.GetGloablEntity()	
+					e = config.GetGloablEntity()
 				}
 				e.AddAttr(key, value)
 			}
 		}
-		
+
 	}
 	return
 }

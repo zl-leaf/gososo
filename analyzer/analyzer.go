@@ -10,6 +10,7 @@ import(
 	"github.com/zl-leaf/gososo/msg"
 	"github.com/zl-leaf/gososo/utils/socket"
 	"github.com/zl-leaf/gososo/utils/db"
+	"github.com/zl-leaf/extract/exp"
 )
 
 type Analyzer struct {
@@ -149,8 +150,10 @@ func crawlUrl(analyzer *Analyzer, url string, sembox chan string) {
 			WriteURLInfo(analyzer, url, statusCode, nil)
 		} else {
 			log.Println("开始分析url："+url+" html文件在："+htmlPath)
-			document := analyzer.analyse(htmlPath)
-			WriteURLInfo(analyzer, url, statusCode, document)
+			document,err := analyzer.analyse(htmlPath)
+			if err == nil {
+				WriteURLInfo(analyzer, url, statusCode, document)
+			}
 		}
 	}
 
@@ -174,7 +177,7 @@ func getDownloadUrl(conn *net.TCPConn) (url string, err error) {
 /**
  * 更新数据库中url和对应关键字的信息
  */
-func WriteURLInfo(analyzer *Analyzer, url string, statusCode int, document *Document) {
+func WriteURLInfo(analyzer *Analyzer, url string, statusCode int, document *exp.Document) {
 	component,_ := analyzer.context.GetComponent("database")
 	database := component.(*db.DatabaseConfig)
 	sql,_ := database.Open()
@@ -191,7 +194,7 @@ func WriteURLInfo(analyzer *Analyzer, url string, statusCode int, document *Docu
 		}
 		defer stmtIns.Close()
 		if statusCode == 200 {
-			stmtIns.Exec(statusCode, document.Title, now, document.MainContent, url)
+			stmtIns.Exec(statusCode, document.Title(), now, document.Body(), url)
 		} else {
 			stmtIns.Exec(statusCode, "", now, "", url)
 			return
@@ -213,7 +216,7 @@ func WriteURLInfo(analyzer *Analyzer, url string, statusCode int, document *Docu
 			}
 			keyword := document.Keywords[i]
 			stmtIns, _ := sql.Prepare("UPDATE keywords SET keyword=?, weight=? WHERE id=?")
-			stmtIns.Exec(keyword.Text, keyword.Weight(), id)
+			stmtIns.Exec(keyword.Text(), keyword.Weight(), id)
 			i++
 		}
 
@@ -221,7 +224,7 @@ func WriteURLInfo(analyzer *Analyzer, url string, statusCode int, document *Docu
 			stmtIns, _ = sql.Prepare("INSERT INTO keywords(keyword, weight, url_id) VALUES( ?, ?, ? )")
 			for ;i<len(document.Keywords);i++ {
 				keyword := document.Keywords[i]
-				stmtIns.Exec(keyword.Text, keyword.Weight(), urlId)
+				stmtIns.Exec(keyword.Text(), keyword.Weight(), urlId)
 			}
 		}
 
@@ -233,23 +236,26 @@ func WriteURLInfo(analyzer *Analyzer, url string, statusCode int, document *Docu
 		}
 	} else {
 		// 插入新url信息
-		stmtIns, err := sql.Prepare("INSERT INTO url_infos(url, statuscode, title, last_modified, description) VALUES( ?, ?, ?, ?, ? )")
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		defer stmtIns.Close()
-		res,err := stmtIns.Exec(url, statusCode, document.Title, now, document.MainContent)
-		if err == nil {
-			// 插入keywords
-			urlId,_ = res.LastInsertId()
-			stmtIns, _ = sql.Prepare("INSERT INTO keywords(keyword, weight, url_id) VALUES( ?, ?, ? )")
-			for _,keyword := range document.Keywords {
-				stmtIns.Exec(keyword.Text, keyword.Weight(), urlId)
+		if statusCode == 200 {
+			stmtIns, err := sql.Prepare("INSERT INTO url_infos(url, statuscode, title, last_modified, description) VALUES( ?, ?, ?, ?, ? )")
+			if err != nil {
+				log.Println(err)
+				return
 			}
-		} else {
-			log.Println(err)
+			defer stmtIns.Close()
+			res,err := stmtIns.Exec(url, statusCode, document.Title(), now, document.Body())
+			if err == nil {
+				// 插入keywords
+				urlId,_ = res.LastInsertId()
+				stmtIns, _ = sql.Prepare("INSERT INTO keywords(keyword, weight, url_id) VALUES( ?, ?, ? )")
+				for _,keyword := range document.Keywords {
+					stmtIns.Exec(keyword.Text(), keyword.Weight(), urlId)
+				}
+			} else {
+				log.Println(err)
+			}
 		}
+
 	}
 }
 
